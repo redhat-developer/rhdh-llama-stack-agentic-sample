@@ -7,7 +7,7 @@
     "test": "jest --config=jest.config.ts"
   },
   "devDependencies": {
-    "@backstage/plugin-scaffolder-common": "^1.7.5",
+    "@backstage/plugin-scaffolder-common": "^2.0.0",
     "@jest/globals": "^30.2.0",
     "@kubernetes/client-node": "^1.4.0",
     "@octokit/rest": "^22.0.1",
