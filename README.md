@@ -137,7 +137,6 @@ Run this in a different window/shell from where you are running a local llamstac
 ```bash
 uv sync
 source .venv/bin/activate
-source .venv/bin/activate
 uv run streamlit run streamlit_app.py
 ```
 

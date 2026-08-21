@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import threading
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 import httpx
 from llama_stack_client import LlamaStackClient
@@ -12,6 +12,9 @@ from typing_extensions import Literal
 from src.constants import LLAMA_STACK_TLS_VERIFY
 from src.types import WorkflowState
 
+K = TypeVar("K")
+V = TypeVar("V")
+
 log_level_str = os.getenv("LOG_LEVEL", "INFO").upper()
 log_level = getattr(logging, log_level_str, logging.INFO)
 
@@ -19,14 +22,14 @@ logging.basicConfig(level=log_level)
 logger = logging.getLogger(__name__)
 
 
-class ObservableDict(dict):
+class ObservableDict(dict, Generic[K, V]):
     """Dict subclass that signals a threading.Event on every write."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.update_event = threading.Event()
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: K, value: V) -> None:
         super().__setitem__(key, value)
         self.update_event.set()
 
