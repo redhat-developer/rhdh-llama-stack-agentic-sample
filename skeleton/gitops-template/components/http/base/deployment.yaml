@@ -45,13 +45,18 @@ spec:
               value: "/tmp/.cache/huggingface"
             - name: TRANSFORMERS_CACHE
               value: "/tmp/.cache/huggingface"
-            # Service URLs
+            {%- if values.deployLlamaStack === 'new' %}
+            # Service URLs (for new Llama Stack deployment)
             - name: LLAMA_STACK_URL
               value: "http://${{ values.name }}-llama-stack:8321"
             - name: LLAMA_STACK_SERVER_OPENAI
               value: "http://${{ values.name }}-llama-stack:8321/v1/openai/v1"
             - name: MCP_SERVER_URL
               value: "http://${{ values.name }}-mcp-server:8080/mcp"
+            {%- else %}
+            # LLAMA_STACK_URL and LLAMA_STACK_TLS_VERIFY come from configmap-app
+            # for existing Llama Stack deployments
+            {%- endif %}
           ports:
             - containerPort: 8501
               name: http

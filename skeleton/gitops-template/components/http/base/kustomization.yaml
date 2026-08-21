@@ -8,10 +8,11 @@ commonLabels:
   app.kubernetes.io/part-of: ${{ values.name }}
 resources:
   - initialize-namespace/
-  # RBAC for MCP Server
-  - rbac-mcp-server.yaml
   # ConfigMaps (run.yaml and ingestion-config.yaml are baked into images)
   - configmap-app.yaml
+  {%- if values.deployLlamaStack === 'new' %}
+  # RBAC for MCP Server (only for new deployments)
+  - rbac-mcp-server.yaml
   - configmap-llama-stack-env.yaml
   # NOTE: Secrets are user-managed - see TechDocs for example
   # Llama Stack Server
@@ -20,14 +21,15 @@ resources:
   # Kubernetes MCP Server
   - deployment-mcp-server.yaml
   - service-mcp-server.yaml
-  # Main Streamlit Application
-  - deployment.yaml
-  - service.yaml
-  - route.yaml
-  {%- if values.safetyModel.startsWith('ollama/') %}
+  {%- if values.safetyModel and values.safetyModel.startsWith('ollama/') %}
   # Ollama Server (for inference and/or safety shields)
   - deployment-ollama.yaml
   - service-ollama.yaml
   - pvc-ollama.yaml
   {%- endif %}
+  {%- endif %}
+  # Main Streamlit Application
+  - deployment.yaml
+  - service.yaml
+  - route.yaml
 

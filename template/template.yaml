@@ -83,14 +83,32 @@ spec:
                   type: string
                   description: Label RHDH uses to identify ArgoCD Applications
 
+    # ==================== Llama Stack Deployment Choice ====================
+    - title: Llama Stack Deployment
+      description: Choose whether to deploy a new Llama Stack server or use an existing one.
+      required:
+        - deployLlamaStack
+      properties:
+        deployLlamaStack:
+          title: Llama Stack Deployment Option
+          type: string
+          enum:
+            - "new"
+            - "existing"
+          enumNames:
+            - "Deploy new Llama Stack server (includes Ollama and MCP Server)"
+            - "Use existing Llama Stack server (provide URL)"
+          default: "new"
+          ui:widget: radio
+
     # ==================== Llama Stack Configuration ====================
     - title: Llama Stack Configuration
-      description: Configure the Llama Stack AI inference server.
-      required:
-        - vllmUrl
+      description: Configure the Llama Stack connection and models.
       ui:order:
         - vllmUrl
         - safetyModel
+        - llamaStackUrl
+        - llamaStackTlsVerify
         - '*'
       properties:
         vllmUrl:
@@ -104,17 +122,45 @@ spec:
           default: ollama/llama-guard3:8b
           description: Model for content safety guardrails
           ui:help: "Optional - Default: ollama/llama-guard3:8b"
+        llamaStackUrl:
+          title: Llama Stack Server URL (LLAMA_STACK_URL)
+          type: string
+          description: URL of your existing Llama Stack server
+          ui:help: "Example: https://llamastack.apps.cluster.example.com"
+        llamaStackTlsVerify:
+          title: Verify TLS Certificate (LLAMA_STACK_TLS_VERIFY)
+          type: boolean
+          default: false
+          description: Set to false to skip TLS certificate verification (e.g. for self-signed certs)
+      dependencies:
+        deployLlamaStack:
+          oneOf:
+            - required:
+                - vllmUrl
+              properties:
+                deployLlamaStack:
+                  const: "new"
+            - required:
+                - llamaStackUrl
+              properties:
+                deployLlamaStack:
+                  const: "existing"
 
     # ==================== Application Configuration ====================
     - title: Application Configuration
-      description: Configure the Streamlit AI application.
+      description: Configure the Streamlit AI application models and settings.
       required:
         - inferenceModel
         - mcpToolModel
+        - embeddingModel
+        - embeddingDimension
         - githubRepoUrl
       ui:order:
         - inferenceModel
         - mcpToolModel
+        - embeddingModel
+        - embeddingDimension
+        - guardrailModel
         - githubRepoUrl
         - '*'
       properties:
@@ -122,12 +168,27 @@ spec:
           title: Inference Model (INFERENCE_MODEL)
           type: string
           description: Model ID for classification and inference
-          ui:help: "Example: vllm/redhataiqwen3-8b-fp8-dynamic"
+          ui:help: "Example: vllm/redhataillama-31-8b-instruct"
         mcpToolModel:
           title: MCP Tool Model (MCP_TOOL_MODEL)
           type: string
           description: Model for MCP Kubernetes tool calls (must support function calling)
-          ui:help: "Example: vllm/redhataiqwen3-8b-fp8-dynamic"
+          ui:help: "Example: vllm/redhataillama-31-8b-instruct"
+        embeddingModel:
+          title: Embedding Model (EMBEDDING_MODEL)
+          type: string
+          description: Model for generating vector embeddings during RAG ingestion
+          ui:help: "Example: openai/text-embedding-3-small or ollama/all-minilm:l6-v2"
+        embeddingDimension:
+          title: Embedding Dimension (EMBEDDING_DIMENSION)
+          type: integer
+          description: Dimension size for embeddings (must match your embedding model)
+          ui:help: "Example: 1536 for text-embedding-3-small, 128 for ollama models"
+        guardrailModel:
+          title: Guardrail Model (GUARDRAIL_MODEL)
+          type: string
+          description: Model for content safety (empty string to disable guardrails)
+          ui:help: "Example: ollama/llama-guard3:8b or leave empty to disable"
         githubRepoUrl:
           title: GitHub Repository URL (GITHUB_URL)
           type: string
@@ -331,9 +392,14 @@ spec:
           srcRepoURL: https://${{ parameters.githubServer if parameters.hostType === 'GitHub' else parameters.gitlabServer }}/${{ parameters.repoOwner }}/${{ parameters.repoName }}
           appContainer: quay.io/redhat-ai-dev/agentic-sample:latest
           appPort: 8501
+          deployLlamaStack: ${{ parameters.deployLlamaStack }}
           inferenceModel: ${{ parameters.inferenceModel }}
+          embeddingModel: ${{ parameters.embeddingModel }}
+          embeddingDimension: ${{ parameters.embeddingDimension }}
           guardrailModel: ${{ parameters.guardrailModel }}
           mcpToolModel: ${{ parameters.mcpToolModel }}
+          llamaStackUrl: ${{ parameters.llamaStackUrl if parameters.deployLlamaStack === 'existing' else '' }}
+          llamaStackTlsVerify: ${{ parameters.llamaStackTlsVerify if parameters.deployLlamaStack === 'existing' else true }}
 
     # Renders all the template variables into the files (catalog-info.yaml, .tekton/)
     - id: fetch-skeleton
@@ -424,12 +490,20 @@ spec:
           appContainer: quay.io/redhat-ai-dev/agentic-sample:latest
           llamaStackContainer: quay.io/redhat-ai-dev/agentic-llama-stack:latest
           appPort: 8501
-          # Llama Stack configuration
-          vllmUrl: ${{ parameters.vllmUrl }}
-          safetyModel: ${{ parameters.safetyModel }}
+          # Llama Stack deployment choice
+          deployLlamaStack: ${{ parameters.deployLlamaStack }}
+          # Llama Stack configuration (for new deployments)
+          vllmUrl: ${{ parameters.vllmUrl if parameters.deployLlamaStack === 'new' else '' }}
+          safetyModel: ${{ parameters.safetyModel if parameters.deployLlamaStack === 'new' else '' }}
           llamaStackSecretName: ${{ parameters.llamaStackSecretName }}
+          # Llama Stack configuration (for existing servers)
+          llamaStackUrl: ${{ parameters.llamaStackUrl if parameters.deployLlamaStack === 'existing' else '' }}
+          llamaStackTlsVerify: ${{ parameters.llamaStackTlsVerify if parameters.deployLlamaStack === 'existing' else true }}
           # Application configuration
           inferenceModel: ${{ parameters.inferenceModel }}
+          embeddingModel: ${{ parameters.embeddingModel }}
+          embeddingDimension: ${{ parameters.embeddingDimension }}
+          guardrailModel: ${{ parameters.guardrailModel }}
           mcpToolModel: ${{ parameters.mcpToolModel }}
           githubRepoUrl: ${{ parameters.githubRepoUrl }}
           # Provider flags (vLLM and OpenAI always enabled for this template)

@@ -12,22 +12,36 @@ metadata:
 data:
   # Inference model configuration
   INFERENCE_MODEL: "${{ values.inferenceModel }}"
-  
+
   # Guardrail model for content safety
-  GUARDRAIL_MODEL: "${{ values.safetyModel }}"
-  
+  GUARDRAIL_MODEL: "${{ values.guardrailModel }}"
+
   # Model for MCP tool calls
   MCP_TOOL_MODEL: "${{ values.mcpToolModel }}"
-  
+
+  # Embedding model for RAG vector store
+  EMBEDDING_MODEL: "${{ values.embeddingModel }}"
+
+  # Embedding dimension (must match embedding model)
+  EMBEDDING_DIMENSION: "${{ values.embeddingDimension }}"
+
   # GitHub repository URL for issue creation
   GITHUB_URL: "${{ values.githubRepoUrl }}"
-  
+  {%- if values.deployLlamaStack === 'existing' %}
+
+  # Existing Llama Stack server URL
+  LLAMA_STACK_URL: "${{ values.llamaStackUrl }}"
+
+  # TLS verification setting
+  LLAMA_STACK_TLS_VERIFY: "${{ values.llamaStackTlsVerify }}"
+  {%- endif %}
+
   # Ingestion configuration path (baked into image)
   INGESTION_CONFIG: "/app-root/config/ingestion-config.yaml"
-  
+
   # RAG file metadata path (writable location for runtime updates)
   RAG_FILE_METADATA: "/tmp/rag_file_metadata.json"
-  
+
   # Maximum concurrent workflow threads
   EXECUTOR_WORKERS: "10"
 
