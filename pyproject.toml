@@ -5,8 +5,11 @@ description = "Llama-Stack LangGraph Customer Service Example"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "llama-stack-client>=0.3.1",
-    "llama-stack>=0.3.1",
+    # Pinned to 0.3.5 to match local llamastack server version.
+    # Client versions up to 0.7.4 successfully connect to remote OCP OGX servers,
+    # but local llamastack 0.7.x has MCP compatibility issues (see start-local-llamastack/pyproject.toml).
+    "llama-stack-client==0.3.5",
+    "llama-stack==0.3.5",
     "pygithub>=2.8.1",
     "pyyaml>=6.0.3",
     "langgraph>=1.0.4",

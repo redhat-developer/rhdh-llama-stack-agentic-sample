@@ -8,7 +8,9 @@ version = "0.1.0"
 description = "Llama Stack Agentic AI Server"
 requires-python = ">=3.12"
 dependencies = [
-    # Core Llama Stack - pinned to 0.3.5 (fixes env var handling bugs)
+    # Core Llama Stack - pinned to 0.3.5
+    # Attempted upgrade to 0.7.4 to align with latest client, but 0.7.x has MCP compatibility
+    # issues: ImportError: cannot import name 'McpError' from 'mcp' (renamed to 'MCPError')
     "llama-stack==0.3.5",
     "llama-stack-client==0.3.5",
     

@@ -2,55 +2,59 @@ import os
 
 # DEFAULT_EMBEDDING_DIMENSION: The default dimension
 # size for vector embeddings.
-DEFAULT_EMBEDDING_DIMENSION = 1536
+DEFAULT_EMBEDDING_DIMENSION = int(os.environ.get("EMBEDDING_DIMENSION", "128"))
 
 # DEFAULT_CHUNK_SIZE_IN_TOKENS: The default size of text
 # chunks in tokens for processing.
-DEFAULT_CHUNK_SIZE_IN_TOKENS = 512
+DEFAULT_CHUNK_SIZE_IN_TOKENS = int(os.environ.get("CHUNK_SIZE_IN_TOKENS", "512"))
 
 # DEFAULT_LLAMA_STACK_URL: The default URL for
 # connecting to the Llama Stack service.
-DEFAULT_LLAMA_STACK_URL = (
-    "https://llamastack-llamastack.apps.gmontero420.rhdh-pai.devfile-ci.com"
-)
+DEFAULT_LLAMA_STACK_URL = os.environ.get("LLAMA_STACK_URL", "http://localhost:8321")
 
 # DEFAULT_LLAMA_STACK_WAITING_RETRIES: The default number
 # of retries for waiting operations in Llama Stack.
-DEFAULT_LLAMA_STACK_WAITING_RETRIES = 2
+DEFAULT_LLAMA_STACK_WAITING_RETRIES = int(
+    os.environ.get("LLAMA_STACK_WAITING_RETRIES", "2")
+)
 
 # DEFAULT_LLAMA_STACK_RETRY_DELAY: The default delay in
 # seconds between retries in Llama Stack.
-DEFAULT_LLAMA_STACK_RETRY_DELAY = 5
+DEFAULT_LLAMA_STACK_RETRY_DELAY = int(os.environ.get("LLAMA_STACK_RETRY_DELAY", "5"))
 
 # DEFAULT_HTTP_REQUEST_TIMEOUT: The default timeout in
 # seconds for HTTP requests.
-DEFAULT_HTTP_REQUEST_TIMEOUT = 60
+DEFAULT_HTTP_REQUEST_TIMEOUT = int(os.environ.get("HTTP_REQUEST_TIMEOUT", "60"))
 
 # DEFAULT_INFERENCE_MODEL: The default inference model
 # used by the RAGService.
-DEFAULT_INFERENCE_MODEL = "vllm-inference/gpt-4.1"
+DEFAULT_INFERENCE_MODEL = os.environ.get(
+    "INFERENCE_MODEL", "vllm/redhataillama-31-8b-instruct"
+)
 
 # DEFAULT_GUARDRAIL_MODEL: The default guardrail model
 # used for response validation. Set to empty string to
 # disable guardrails.
-DEFAULT_GUARDRAIL_MODEL = ""
+DEFAULT_GUARDRAIL_MODEL = os.environ.get("GUARDRAIL_MODEL", "ollama/llama-guard3:8b")
 
 # DEFAULT_EMBEDDING_MODEL: The default embedding model
 # used for generating vector embeddings.
-DEFAULT_EMBEDDING_MODEL = "openai/text-embedding-3-small"
+DEFAULT_EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "ollama/all-minilm:l6-v2")
 
 # DEFAULT_INGESTION_MODE: The default mode for document ingestion.
 # "sync" = sequential (slower but more stable, won't overwhelm embedding model)
 # "async" = concurrent (faster but may crash embedding model under load)
-DEFAULT_INGESTION_MODE = "sync"
+DEFAULT_INGESTION_MODE = os.environ.get("INGESTION_MODE", "sync")
 
 # DEFAULT_MCP_TOOL_MODEL: The default model used for
 # MCP tool calls.
-DEFAULT_MCP_TOOL_MODEL = "vllm-inference/gpt-4.1"
+DEFAULT_MCP_TOOL_MODEL = os.environ.get(
+    "MCP_TOOL_MODEL", "vllm/redhataillama-31-8b-instruct"
+)
 
 # DEFAULT_MCP_SERVER_URL: The default URL for the MCP
 # (Model Context Protocol) server for Kubernetes tools.
-DEFAULT_MCP_SERVER_URL = "http://localhost:8080/mcp"
+DEFAULT_MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", "http://localhost:8080/mcp")
 
 # DEFAULT_INGESTION_CONFIG: The default path to the ingestion
 # configuration file.

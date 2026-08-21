@@ -21,6 +21,35 @@ A hint on what you will find
 
 The application features an interactive Streamlit chat interface that provides real-time feedback as your questions are processed. You can manage multiple concurrent conversations, track workflow progress with visual status indicators, and view detailed agent interactions and performance metrics.
 
+## Environment Configuration
+
+The application can be configured using environment variables. Two template files are provided in the `config/` directory:
+
+- **`config/sample-env`** - Template with default values for local Llama Stack setup (committed to git)
+- **`config/private-env`** - Your private configuration (gitignored, not committed)
+
+To use these files:
+
+1. Copy `sample-env` to `private-env`:
+   ```bash
+   cp config/sample-env config/private-env
+   ```
+
+2. Edit `config/private-env` with your settings (Llama Stack URL, model names, API tokens, etc.)
+
+Key environment variables you can configure:
+
+- `LLAMA_STACK_URL` - URL of your Llama Stack server (default: remote OCP cluster)
+- `LLAMA_STACK_TLS_VERIFY` - Set to `false` for self-signed certs (default: `false`)
+- `INFERENCE_MODEL` - Model for classification and inference
+- `EMBEDDING_MODEL` - Model for generating embeddings during RAG ingestion
+- `EMBEDDING_DIMENSION` - Dimension size for embeddings (must match your model)
+- `GUARDRAIL_MODEL` - Model for content safety (empty string to disable)
+- `MCP_TOOL_MODEL` - Model for MCP tool calls
+- `GITHUB_TOKEN` - GitHub personal access token (avoids rate limits during ingestion)
+
+See `config/sample-env` for the complete list of configurable variables.
+
 ## Installation and Configuration
 
 ### Install Models
@@ -58,13 +87,13 @@ Visit the [run.yaml file](./run.yaml) for the environment variables leveraged wi
 #### Connecting to a remote Llama Stack server
 
 To point the application at a remote Llama Stack server (e.g. deployed on OpenShift via the OGX operator),
-set the following environment variables:
+configure your `config/private-env` file with the appropriate values. See the [Environment Configuration](#environment-configuration) section above for details.
 
+The key variables for remote connectivity are:
 - `LLAMA_STACK_URL` - the URL of the remote Llama Stack server
-- `LLAMA_STACK_TLS_VERIFY` - set to `false` to skip TLS certificate verification (e.g. for self-signed certs on OpenShift routes)
-- `GUARDRAIL_MODEL` - set to empty string (`""`) to disable guardrails if the remote server does not support the `/v1/moderations` endpoint
-- `EMBEDDING_MODEL` - override the embedding model used for RAG ingestion (e.g. `openai/text-embedding-3-small`)
-- `EMBEDDING_DIMENSION` - override the embedding dimension to match the model (e.g. `1536` for `text-embedding-3-small`)
+- `LLAMA_STACK_TLS_VERIFY` - set to `false` to skip TLS certificate verification
+- `GUARDRAIL_MODEL` - set to empty string to disable guardrails if unsupported
+- `EMBEDDING_MODEL` and `EMBEDDING_DIMENSION` - must match your remote server's configuration
 
 ### Update your Llama Stack config to access your existing models
 
@@ -137,6 +166,7 @@ Run this in a different window/shell from where you are running a local llamstac
 ```bash
 uv sync
 source .venv/bin/activate
+source config/private-env
 uv run streamlit run streamlit_app.py
 ```
 

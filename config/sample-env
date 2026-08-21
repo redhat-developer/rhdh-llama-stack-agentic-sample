@@ -1,0 +1,27 @@
+# Sample Environment Configuration
+# Copy this file to private-env and customize for your environment
+# private-env is gitignored and will not be committed
+
+# Llama Stack Configuration
+export LLAMA_STACK_URL=http://localhost:8321
+export LLAMA_STACK_TLS_VERIFY=false
+
+# Model Configuration
+export INFERENCE_MODEL=vllm/redhataillama-31-8b-instruct
+export GUARDRAIL_MODEL=ollama/llama-guard3:8b
+export EMBEDDING_MODEL=ollama/all-minilm:l6-v2
+export EMBEDDING_DIMENSION=128
+export MCP_TOOL_MODEL=vllm/redhataillama-31-8b-instruct
+
+# GitHub Configuration
+# Set your GitHub personal access token here to avoid rate limits
+# Get one at: https://github.com/settings/tokens
+#export GITHUB_TOKEN=
+
+# Optional: Override other defaults
+# export CHUNK_SIZE_IN_TOKENS=512
+# export LLAMA_STACK_WAITING_RETRIES=2
+# export LLAMA_STACK_RETRY_DELAY=5
+# export HTTP_REQUEST_TIMEOUT=60
+# export INGESTION_MODE=sync
+# export MCP_SERVER_URL=http://localhost:8080/mcp
