@@ -11,12 +11,30 @@ export INFERENCE_MODEL=vllm/redhataillama-31-8b-instruct
 export GUARDRAIL_MODEL=ollama/llama-guard3:8b
 export EMBEDDING_MODEL=ollama/all-minilm:l6-v2
 export EMBEDDING_DIMENSION=128
-export MCP_TOOL_MODEL=vllm/redhataillama-31-8b-instruct
+export MCP_TOOL_MODEL=vllm/redhataillama-31-8b-instructsc
 
-# GitHub Configuration
-# Set your GitHub personal access token here to avoid rate limits
-# Get one at: https://github.com/settings/tokens
-#export GITHUB_TOKEN=
+# ============================================================
+# Kubernetes Secret Configuration (for Tekton pipelines)
+# ============================================================
+# These variables are used by config/create-platform-credentials-secret.sh
+# to create the platform-credentials Kubernetes secret required for CI/CD.
+# Uncomment and set values in config/private-env, then run:
+#   source config/private-env
+#   ./config/create-platform-credentials-secret.sh
+
+# GitHub Personal Access Token with 'repo' scope (for GitOps + issue creation)
+#export GITHUB_TOKEN=your-github-pat
+
+# GitLab Personal Access Token (only if using GitLab instead of GitHub)
+#export GITLAB_TOKEN=your-gitlab-pat
+
+# Pipelines as Code webhook secret
+#export WEBHOOK_SECRET=your-webhook-secret
+
+# Quay.io Docker config JSON for image push authentication
+# Format: '{"auths":{"quay.io":{"auth":"base64-of-user:token","email":"your@email.com"}}}'
+# Generate auth value: echo -n "username:robot-token" | base64
+#export QUAY_DOCKERCONFIGJSON='{"auths":{"quay.io":{"auth":"","email":""}}}'
 
 # Optional: Override other defaults
 # export CHUNK_SIZE_IN_TOKENS=512

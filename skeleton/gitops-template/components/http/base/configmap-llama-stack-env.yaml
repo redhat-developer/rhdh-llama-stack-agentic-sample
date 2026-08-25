@@ -14,10 +14,10 @@ metadata:
     app.kubernetes.io/component: llama-stack
 data:
   # vLLM Server URL
-  VLLM_URL: "${{ values.vllmUrl }}"
-  
+  VLLM_URL: "${{ values.vllmUrl | trim }}"
+
   # Ollama Server URL (points to deployed Ollama service)
   OLLAMA_URL: "http://${{ values.name }}-ollama:11434"
-  
+
   # Safety Model for guardrails
-  SAFETY_MODEL: "${{ values.safetyModel }}"
+  SAFETY_MODEL: "${{ values.safetyModel | trim }}"

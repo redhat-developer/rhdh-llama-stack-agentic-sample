@@ -50,6 +50,30 @@ Key environment variables you can configure:
 
 See `config/sample-env` for the complete list of configurable variables.
 
+### Creating Kubernetes Secrets for CI/CD
+
+If you're deploying via the Backstage template, you'll need a `platform-credentials` Kubernetes secret for Tekton pipelines to authenticate with GitHub and Quay.io.
+
+The repository includes a helper script to create this secret:
+
+1. **Set the required environment variables** in `config/private-env`:
+   ```bash
+   export GITHUB_TOKEN=ghp_your_token_here
+   export WEBHOOK_SECRET=your_webhook_secret
+   export QUAY_DOCKERCONFIGJSON='{"auths":{"quay.io":{"auth":"base64-encoded","email":"your@email.com"}}}'
+   export NAMESPACE=rolling-demo-ns  # Optional, defaults to rolling-demo-ns
+   ```
+
+2. **Run the script**:
+   ```bash
+   source config/private-env
+   ./config/create-platform-credentials-secret.sh
+   ```
+
+The script validates all required variables are set, deletes any existing secret, and creates a new one in your target namespace.
+
+See `config/sample-env` for commented examples of the required format for each variable.
+
 ## Installation and Configuration
 
 ### Install Models

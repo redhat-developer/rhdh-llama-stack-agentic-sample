@@ -11,29 +11,29 @@ metadata:
     app.kubernetes.io/name: ${{ values.name }}-app-config
 data:
   # Inference model configuration
-  INFERENCE_MODEL: "${{ values.inferenceModel }}"
+  INFERENCE_MODEL: "${{ values.inferenceModel | trim }}"
 
   # Guardrail model for content safety
-  GUARDRAIL_MODEL: "${{ values.guardrailModel }}"
+  GUARDRAIL_MODEL: "${{ values.guardrailModel | trim }}"
 
   # Model for MCP tool calls
-  MCP_TOOL_MODEL: "${{ values.mcpToolModel }}"
+  MCP_TOOL_MODEL: "${{ values.mcpToolModel | trim }}"
 
   # Embedding model for RAG vector store
-  EMBEDDING_MODEL: "${{ values.embeddingModel }}"
+  EMBEDDING_MODEL: "${{ values.embeddingModel | trim }}"
 
   # Embedding dimension (must match embedding model)
   EMBEDDING_DIMENSION: "${{ values.embeddingDimension }}"
 
   # GitHub repository URL for issue creation
-  GITHUB_URL: "${{ values.githubRepoUrl }}"
+  GITHUB_URL: "${{ values.githubRepoUrl | trim }}"
   {%- if values.deployLlamaStack === 'existing' %}
 
   # Existing Llama Stack server URL
-  LLAMA_STACK_URL: "${{ values.llamaStackUrl }}"
+  LLAMA_STACK_URL: "${{ values.llamaStackUrl | trim }}"
 
   # TLS verification setting
-  LLAMA_STACK_TLS_VERIFY: "${{ values.llamaStackTlsVerify }}"
+  LLAMA_STACK_TLS_VERIFY: "${{ values.llamaStackTlsVerify | trim }}"
   {%- endif %}
 
   # Ingestion configuration path (baked into image)

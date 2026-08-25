@@ -109,6 +109,33 @@ stringData:
   QUAY_DOCKERCONFIGJSON: '{"auths":{"quay.io":{"auth":"","email":""}}}'
 ```
 
+#### **Creating Platform Credentials with the Helper Script**
+
+The repository includes a helper script to create the `platform-credentials` secret from environment variables:
+
+1. **Set environment variables** in `config/private-env`:
+   ```bash
+   export GITHUB_TOKEN=ghp_your_token_here
+   export WEBHOOK_SECRET=your_webhook_secret
+   export QUAY_DOCKERCONFIGJSON='{"auths":{"quay.io":{"auth":"base64-encoded","email":"your@email.com"}}}'
+   export GITLAB_TOKEN=  # Optional, only if using GitLab
+   export NAMESPACE=rolling-demo-ns  # Optional, defaults to rolling-demo-ns
+   ```
+
+2. **Run the script**:
+   ```bash
+   source config/private-env
+   ./config/create-platform-credentials-secret.sh
+   ```
+
+The script will:
+- Validate that all required variables are set
+- Delete any existing `platform-credentials` secret
+- Create a new secret with your credentials
+- Confirm successful creation
+
+See `config/sample-env` for reference examples of all required variables.
+
 !!! warning "Secret Management"
     
     For production deployments, use **Sealed Secrets** or **External Secrets Operator** 
