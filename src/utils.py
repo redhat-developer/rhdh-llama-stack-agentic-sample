@@ -4,8 +4,8 @@ import os
 import threading
 from typing import Any
 
-from llama_stack_client import LlamaStackClient
-from llama_stack_client.types import ResponseObject
+from ogx_client import OgxClient
+from ogx_client import OpenAIResponseObject as ResponseObject
 from typing_extensions import Literal
 
 from src.types import WorkflowState
@@ -191,12 +191,12 @@ def extract_mcp_output(
     return mcp_output
 
 
-def check_llama_stack_availability(
+def check_ogx_availability(
     base_url: "str",
     required_models: "list[str] | None" = None,
 ) -> "dict[str, Any]":
     """
-    checks llama-stack server connectivity and model availability.
+    checks OGX server connectivity and model availability.
     Makes sure that all required models are present on the server.
     """
     result: "dict[str, Any]" = {
@@ -207,7 +207,7 @@ def check_llama_stack_availability(
     }
 
     try:
-        client = LlamaStackClient(base_url=base_url)
+        client = OgxClient(base_url=base_url)
         models_response = client.models.list()
         result["connected"] = True
 
@@ -216,7 +216,7 @@ def check_llama_stack_availability(
 
         available_model_ids = set()
         if models_response:
-            for model in models_response:
+            for model in models_response.data:
                 model_id = getattr(model, "identifier", None) or getattr(
                     model, "id", None
                 )
@@ -234,16 +234,16 @@ def check_llama_stack_availability(
         error_str = str(e)
         if "Connection refused" in error_str or "ConnectError" in error_str:
             result["error_message"] = (
-                f"Cannot connect to Llama Stack server at {base_url}. "
+                f"Cannot connect to OGX server at {base_url}. "
                 "Please ensure the server is running."
             )
         elif "timeout" in error_str.lower():
             result["error_message"] = (
-                f"Connection to Llama Stack at {base_url} timed out."
+                f"Connection to OGX at {base_url} timed out."
             )
         else:
-            result["error_message"] = f"Llama Stack connection failed: {error_str}"
+            result["error_message"] = f"OGX connection failed: {error_str}"
 
-        logger.error(f"Llama Stack health check failed: {result['error_message']}")
+        logger.error(f"OGX health check failed: {result['error_message']}")
 
     return result

@@ -8,7 +8,7 @@ from typing import Any
 
 import httpx
 import streamlit as st
-from llama_stack_client import LlamaStackClient
+from ogx_client import OgxClient
 
 from src.constants import (
     DEFAULT_GUARDRAIL_MODEL,
@@ -22,7 +22,7 @@ from src.ingest import IngestionService
 from src.responses import RAGService
 from src.types import Pipeline, WorkflowState
 from src.utils import (
-    check_llama_stack_availability,
+    check_ogx_availability,
     ingestion_lock,
     logger,
     submission_states,
@@ -55,7 +55,7 @@ GITHUB_URL = os.getenv("GITHUB_URL", "not applicable")
 # GITHUB_ID: GitHub user ID
 GITHUB_ID = os.getenv("GITHUB_ID", "not applicable")
 
-# LLAMA_STACK_URL: URL of the Llama Stack server
+# LLAMA_STACK_URL: URL of the OGX server
 LLAMA_STACK_URL = os.getenv("LLAMA_STACK_URL", DEFAULT_LLAMA_STACK_URL)
 
 # INGESTION_CONFIG: Path to the ingestion configuration file
@@ -216,8 +216,9 @@ def count_vector_stores() -> "int":
     count the number of vector stores in the database
     """
     try:
-        client = LlamaStackClient(base_url=LLAMA_STACK_URL)
-        vector_stores = client.vector_stores.list() or []
+        client = OgxClient(base_url=LLAMA_STACK_URL)
+        vs_resp = client.vector_stores.list()
+        vector_stores = vs_resp.data if vs_resp else []
         vector_store_list = list(vector_stores)
         count = len(vector_store_list)
         logger.debug(f"Found {count} vector stores in database")
@@ -227,30 +228,30 @@ def count_vector_stores() -> "int":
         return 0
 
 
-def get_llama_stack_status() -> "dict[str, Any]":
+def get_ogx_status() -> "dict[str, Any]":
     """
-    gets or initializes llama-stack status state.
+    gets or initializes OGX status state.
     Tracks connectivity and model availability.
     """
-    if "llama_stack_status" not in st.session_state:
-        st.session_state.llama_stack_status = {
+    if "ogx_status" not in st.session_state:
+        st.session_state.ogx_status = {
             "connected": False,
             "checked": False,
             "error_message": "",
             "available_models": [],
             "missing_models": [],
         }
-    return st.session_state.llama_stack_status
+    return st.session_state.ogx_status
 
 
-def check_llama_stack_health() -> "dict[str, Any]":
+def check_ogx_health() -> "dict[str, Any]":
     """
-    performs health check of llama-stack: connectivity and model availability.
+    performs health check of OGX: connectivity and model availability.
     """
-    status = get_llama_stack_status()
+    status = get_ogx_status()
 
     required_models = [INFERENCE_MODEL, GUARDRAIL_MODEL, MCP_TOOL_MODEL]
-    result = check_llama_stack_availability(LLAMA_STACK_URL, required_models)
+    result = check_ogx_availability(LLAMA_STACK_URL, required_models)
 
     status["connected"] = result["connected"]
     status["error_message"] = result["error_message"]
@@ -261,12 +262,12 @@ def check_llama_stack_health() -> "dict[str, Any]":
     return status
 
 
-def render_llama_stack_errors() -> "bool":
+def render_ogx_errors() -> "bool":
     """
-    renders error banners for llama-stack issues in sidebar.
+    renders error banners for OGX issues in sidebar.
     Returns True if there are blocking errors (no connection or missing models).
     """
-    status = get_llama_stack_status()
+    status = get_ogx_status()
 
     if not status["checked"]:
         return False
@@ -274,14 +275,14 @@ def render_llama_stack_errors() -> "bool":
     # connection error case
     if not status["connected"]:
         st.error(
-            "**Llama Stack Unavailable**\n\n"
+            "**OGX Unavailable**\n\n"
             f"{status['error_message']}\n\n"
             "**To fix:**\n"
-            f"- Start Llama Stack at `{LLAMA_STACK_URL}`\n"
+            f"- Start OGX at `{LLAMA_STACK_URL}`\n"
             "- Or set `LLAMA_STACK_URL` to the correct address"
         )
         if st.button("Retry Connection"):
-            check_llama_stack_health()
+            check_ogx_health()
             st.rerun()
         return True
 
@@ -290,9 +291,9 @@ def render_llama_stack_errors() -> "bool":
         missing_list = "\n".join([f"- `{m}`" for m in status["missing_models"]])
         st.error(
             "**Models Not Found**\n\n"
-            f"These models are not available in Llama Stack:\n{missing_list}\n\n"
+            f"These models are not available in OGX:\n{missing_list}\n\n"
             "**To fix:**\n"
-            "- Check your Llama Stack `run.yaml` configuration\n"
+            "- Check your OGX `run.yaml` configuration\n"
             "- Or update the model environment variables"
         )
         return True
@@ -313,7 +314,7 @@ async def check_and_run_ingestion_if_needed() -> "None":
         # check if vector stores for all pipelines exist
         ingestion_service = get_ingestion_service()
         pipelines = ingestion_service.pipelines
-        temp_client = LlamaStackClient(base_url=LLAMA_STACK_URL)
+        temp_client = OgxClient(base_url=LLAMA_STACK_URL)
         temp_rag_service = RAGService(
             pipelines=pipelines, llama_stack_url=LLAMA_STACK_URL
         )
@@ -354,21 +355,21 @@ async def run_ingestion_pipeline() -> "None":
 
     try:
         ingestion_state["status"] = "running"
-        ingestion_state["message"] = "Checking llama-stack server availability..."
+        ingestion_state["message"] = "Checking OGX server availability..."
         logger.info("Starting Ingestion Service...")
 
-        # verify llama-stack server is reachable before ingestion
+        # verify OGX server is reachable before ingestion
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
                 response = await client.get(f"{LLAMA_STACK_URL}/v1/health")
                 if response.status_code != 200:
                     raise Exception(
-                        f"Llama-stack server returned status {response.status_code}"
+                        f"OGX server returned status {response.status_code}"
                     )
-                logger.info("✓ Llama-stack server is available")
+                logger.info("✓ OGX server is available")
         except Exception as e:
             raise Exception(
-                f"Llama-stack server not available at {LLAMA_STACK_URL}. "
+                f"OGX server not available at {LLAMA_STACK_URL}. "
                 f"Please start the server first: {e}"
             )
 
@@ -413,9 +414,6 @@ def _render_exchange_response(state: "WorkflowState") -> "None":
     """
     renders the agent response for a single exchange
     """
-    if not state:
-        return
-
     # extract workflow state data
     decision = state.get("decision", "").lower()
     classification_msg = state.get("classification_message", "")
@@ -838,10 +836,10 @@ def main() -> "None":
         initial_sidebar_state="expanded",
     )
 
-    # check llama-stack health on first load
-    llama_stack_status = get_llama_stack_status()
-    if not llama_stack_status["checked"]:
-        llama_stack_status = check_llama_stack_health()
+    # check OGX health on first load
+    ogx_status = get_ogx_status()
+    if not ogx_status["checked"]:
+        ogx_status = check_ogx_health()
 
     # ingestion state runs automatically on startup
     ingestion_state = get_ingestion_state()
@@ -849,20 +847,20 @@ def main() -> "None":
     with st.sidebar:
         st.title("⚙️ Configuration")
 
-        # show llama-stack connection status
-        if llama_stack_status["checked"]:
-            if llama_stack_status["connected"]:
-                st.success("**Llama Stack:** Connected")
+        # show OGX connection status
+        if ogx_status["checked"]:
+            if ogx_status["connected"]:
+                st.success("**OGX:** Connected")
             else:
-                st.error("**Llama Stack:** Disconnected")
+                st.error("**OGX:** Disconnected")
 
         st.markdown(f"**Inference Model:** `{INFERENCE_MODEL}`")
         st.markdown(f"**Guardrail Model:** `{GUARDRAIL_MODEL}`")
         st.markdown(f"**MCP Tool Model:** `{MCP_TOOL_MODEL}`")
         st.divider()
 
-        # render llama-stack errors
-        has_blocking_error = render_llama_stack_errors()
+        # render OGX errors
+        has_blocking_error = render_ogx_errors()
         if has_blocking_error:
             st.divider()
 
@@ -888,19 +886,19 @@ def main() -> "None":
             st.metric("Vector Stores in Database", vector_store_count)
         st.divider()
 
-    # block workflow if llama-stack is not connected
-    if not llama_stack_status["connected"]:
+    # block workflow if OGX is not connected
+    if not ogx_status["connected"]:
         st.title("🤖 Agentic AI Workflow - Connection Error")
         st.error(
-            "**Cannot start workflow: Llama Stack is not available**\n\n"
-            f"{llama_stack_status['error_message']}\n\n"
+            "**Cannot start workflow: OGX is not available**\n\n"
+            f"{ogx_status['error_message']}\n\n"
             "Please check the sidebar for details on how to resolve this issue."
         )
         return
 
     # block workflow if required models are not available
-    if llama_stack_status.get("missing_models"):
-        missing_list = ", ".join(llama_stack_status["missing_models"])
+    if ogx_status.get("missing_models"):
+        missing_list = ", ".join(ogx_status["missing_models"])
         st.title("🤖 Agentic AI Workflow - Model Error")
         st.error(
             "**Cannot start workflow: Required models are not available**\n\n"

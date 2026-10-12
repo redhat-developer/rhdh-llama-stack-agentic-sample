@@ -87,12 +87,12 @@ def sample_metadata_file(temp_dir, sample_file_metadata):
 
 
 @pytest.fixture
-def mock_llama_stack_client():
+def mock_ogx_client():
     client = Mock()
     client.models.list.return_value = []
     client.vector_stores.list.return_value = []
     client.vector_stores.create.return_value = Mock(id="test-vector-store-id")
-    client.vector_stores.files.create.return_value = Mock(
+    client.vector_stores_files.create.return_value = Mock(
         id="test-file-id", status="completed"
     )
     client.files.create.return_value = Mock(id="test-file-id")
@@ -102,13 +102,6 @@ def mock_llama_stack_client():
 @pytest.fixture
 def mock_openai_client():
     client = Mock()
-
-    moderation_result = Mock()
-    moderation_result.flagged = False
-    moderation_result.categories = Mock(model_extra={})
-    mock_moderation_response = Mock()
-    mock_moderation_response.results = [moderation_result]
-    client.moderations.create.return_value = mock_moderation_response
 
     mock_completion = Mock()
     mock_completion.choices = [Mock(message=Mock(content="Test response"))]
@@ -188,13 +181,13 @@ def mock_document_converter():
 
 
 @pytest.fixture
-def mock_llama_stack_availability():
+def mock_ogx_availability():
     """
-    fixture that patches check_llama_stack_availability to return connected status.
+    fixture that patches check_ogx_availability to return connected status.
     Use this in tests that need IngestionService initialization.
     """
     with patch(
-        "src.ingest.check_llama_stack_availability",
+        "src.ingest.check_ogx_availability",
         return_value={"connected": True, "error_message": ""},
     ) as mock:
         yield mock

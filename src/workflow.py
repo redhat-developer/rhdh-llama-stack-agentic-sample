@@ -3,7 +3,7 @@ import time
 from typing import Any, cast
 
 from langgraph.graph import START, StateGraph
-from llama_stack_client.types import ResponseObject
+from ogx_client import OpenAIResponseObject as ResponseObject
 
 from src.constants import (
     DEFAULT_INFERENCE_MODEL,
@@ -211,10 +211,10 @@ class Workflow:
                     rag_end_time = time.time()
                     state["rag_query_time"] = rag_end_time - rag_start_time
 
-                    response_text = extract_rag_response_text(rag_response)
                     rag_response_obj: "ResponseObject" = cast(
                         ResponseObject, rag_response
                     )
+                    response_text = extract_rag_response_text(rag_response_obj)
 
                     if rag_category:
                         sources = self.rag_service.extract_sources_from_response(

@@ -1,4 +1,4 @@
-# **Using the Llama Stack Agentic AI Workflow Template**
+# **Using the OGX Agentic AI Workflow Template**
 
 This AI Software Template allows you to customize and deploy a complete agentic AI workflow system. Follow this guide to configure and use the template effectively.
 
@@ -16,7 +16,7 @@ This AI Software Template allows you to customize and deploy a complete agentic 
 | **Include ArgoCD App Label** | Include a user provided ArgoCD Application Label | `true` | No |
 | **ArgoCD Application Label** | Label RHDH uses to identify ArgoCD Applications | `rolling-demo` | Conditional |
 
-### **Llama Stack Configuration**
+### **OGX Configuration**
 
 | Parameter | Description | Default | Required |
 |-----------|-------------|---------|----------|
@@ -57,7 +57,7 @@ All secrets must exist in the specified namespace before deployment.
 | Parameter | Description | Default | Required |
 |-----------|-------------|---------|----------|
 | **Deployment Namespace** | Kubernetes namespace where the application and secrets will be deployed | `rhdh-app` | Yes |
-| **Llama Stack Secrets Name** | Secret containing `VLLM_API_KEY` and `OPENAI_API_KEY` | `llama-stack-secrets` | Yes |
+| **OGX Secrets Name** | Secret containing `VLLM_API_KEY` and `OPENAI_API_KEY` | `ogx-secrets` | Yes |
 | **Platform Credentials Secret Name** | Secret containing `GITHUB_TOKEN`, `GITLAB_TOKEN`, `WEBHOOK_SECRET`, `QUAY_DOCKERCONFIGJSON` | `platform-credentials` | Yes |
 | **Secrets Acknowledgment** | Checkbox confirming secrets exist or will be created | - | Yes |
 
@@ -73,13 +73,13 @@ All secrets must exist in the specified namespace before deployment.
 
 Before deploying, you need to create the following secrets in your target namespace. See the examples below for the required structure.
 
-### **Llama Stack Secrets**
+### **OGX Secrets**
 
 ```yaml
 apiVersion: v1
 kind: Secret
 metadata:
-  name: llama-stack-secrets  # Must match "Llama Stack Secrets Name" parameter
+  name: ogx-secrets  # Must match "OGX Secrets Name" parameter
 type: Opaque
 stringData:
   # API key for vLLM server - required for inference
@@ -134,9 +134,9 @@ The Kubernetes MCP Server requires read access to cluster resources. The templat
    kubectl get pods -l app.kubernetes.io/part-of=<app-name>
    ```
 
-2. **Check Llama Stack Health**:
+2. **Check OGX Health**:
    ```bash
-   kubectl port-forward svc/<app-name>-llama-stack 8321:8321
+   kubectl port-forward svc/<app-name>-ogx 8321:8321
    curl http://localhost:8321/v1/health
    ```
 
@@ -156,12 +156,12 @@ The Kubernetes MCP Server requires read access to cluster resources. The templat
 
 ## **Troubleshooting**
 
-### Llama Stack Not Starting
+### OGX Not Starting
 
 Check the ConfigMap and Secret are correctly configured:
 ```bash
-kubectl get configmap <app-name>-llama-stack-env -o yaml
-kubectl get secret llama-stack-secrets
+kubectl get configmap <app-name>-ogx-env -o yaml
+kubectl get secret ogx-secrets
 ```
 
 ### MCP Server Permission Denied
@@ -181,7 +181,7 @@ kubectl logs deployment/<app-name>-ollama -c ollama
 
 ### Vector Store Errors
 
-Check the Ollama PVC is bound (Llama Stack uses ephemeral storage):
+Check the Ollama PVC is bound (OGX uses ephemeral storage):
 ```bash
 kubectl get pvc <app-name>-ollama-data
 ```

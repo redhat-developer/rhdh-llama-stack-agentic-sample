@@ -1,0 +1,20 @@
+# Service for OGX Server
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    app.kubernetes.io/instance: ${{ values.name }}-ogx
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: ${{ values.name }}-ogx
+  name: ${{ values.name }}-ogx
+spec:
+  ports:
+    - port: 8321
+      protocol: TCP
+      targetPort: 8321
+      name: http
+  selector:
+    app.kubernetes.io/instance: ${{ values.name }}-ogx
+

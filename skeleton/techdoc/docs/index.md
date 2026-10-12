@@ -1,6 +1,6 @@
 # **Introduction**
 
-Congratulations! You deployed a **Llama Stack Agentic AI Workflow** application from a Software Template. The template has created a new source code repository for the application code, as well as a new GitOps deployment repository to handle deployment related tasks.
+Congratulations! You deployed a **OGX Agentic AI Workflow** application from a Software Template. The template has created a new source code repository for the application code, as well as a new GitOps deployment repository to handle deployment related tasks.
 
 !!! info
 
@@ -10,7 +10,7 @@ Congratulations! You deployed a **Llama Stack Agentic AI Workflow** application 
 
 # **What This Application Does**
 
-The Llama Stack Agentic application is an intelligent chat interface that:
+The OGX Agentic application is an intelligent chat interface that:
 
 1. **Classifies User Questions** - Dynamically routes queries to specialized AI Agents
 2. **Multi-Agent Orchestration** - Employs specialized agents for:
@@ -51,7 +51,7 @@ This template deploys four interconnected services:
 | Component | Port | Description |
 |-----------|------|-------------|
 | **Streamlit UI** | 8501 | Interactive chat interface |
-| **Llama Stack Server** | 8321 | AI inference orchestration |
+| **OGX Server** | 8321 | AI inference orchestration |
 | **Ollama** | 11434 | Local LLM inference engine |
 | **Kubernetes MCP Server** | 8080 | Cluster introspection tools |
 
@@ -68,7 +68,7 @@ The application uses the following configuration:
 | `GITHUB_TOKEN` | GitHub integration | OpenShift/Kubernetes Secret |
 | `GITHUB_URL` | Target repository for GitHub MCP Tool | Software Template Form |
 
-The Llama Stack server uses the following configuration:
+The OGX server uses the following configuration:
 
 | Variable | Description | User Input |
 |----------|-------------|------------|

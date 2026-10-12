@@ -156,12 +156,12 @@ class TestInitialize:
     tests for initialize method.
     """
 
-    def test_initialize_success(self, mock_llama_stack_client):
+    def test_initialize_success(self, mock_ogx_client):
         pipelines = []
         service = RAGService(pipelines=pipelines)
 
         with patch(
-            "src.responses.LlamaStackClient", return_value=mock_llama_stack_client
+            "src.responses.OgxClient", return_value=mock_ogx_client
         ):
             with patch("src.responses.OpenAI") as mock_openai:
                 with patch.object(service, "load_vector_stores", return_value=True):
@@ -176,7 +176,7 @@ class TestInitialize:
         service = RAGService(pipelines=pipelines)
 
         with patch(
-            "src.responses.LlamaStackClient",
+            "src.responses.OgxClient",
             side_effect=Exception("Connection error"),
         ):
             result = service.initialize()
@@ -189,7 +189,7 @@ class TestLoadVectorStores:
     tests for load_vector_stores method.
     """
 
-    def test_load_vector_stores_success(self, mock_llama_stack_client):
+    def test_load_vector_stores_success(self, mock_ogx_client):
         mock_vs1 = Mock()
         mock_vs1.id = "legal-vs-id"
         mock_vs1.name = "legal-vector-db"
@@ -198,11 +198,13 @@ class TestLoadVectorStores:
         mock_vs2.id = "hr-vs-id"
         mock_vs2.name = "hr-vector-db"
 
-        mock_llama_stack_client.vector_stores.list.return_value = [mock_vs1, mock_vs2]
+        mock_ogx_client.vector_stores.list.return_value = Mock(
+            data=[mock_vs1, mock_vs2]
+        )
 
         pipelines = []
         service = RAGService(pipelines=pipelines)
-        service.client = mock_llama_stack_client
+        service.client = mock_ogx_client
 
         result = service.load_vector_stores()
 
@@ -211,12 +213,12 @@ class TestLoadVectorStores:
         assert "legal" in service.vector_store_map
         assert "hr" in service.vector_store_map
 
-    def test_load_vector_stores_with_no_stores(self, mock_llama_stack_client):
-        mock_llama_stack_client.vector_stores.list.return_value = []
+    def test_load_vector_stores_with_no_stores(self, mock_ogx_client):
+        mock_ogx_client.vector_stores.list.return_value = []
 
         pipelines = []
         service = RAGService(pipelines=pipelines)
-        service.client = mock_llama_stack_client
+        service.client = mock_ogx_client
 
         with pytest.raises(NoVectorStoresFoundError) as exc_info:
             service.load_vector_stores()
@@ -485,18 +487,20 @@ class TestGetFilesFromVectorStore:
     """
 
     def test_get_files_from_vector_store_success(
-        self, mock_llama_stack_client, sample_metadata_file
+        self, mock_ogx_client, sample_metadata_file
     ):
         pipelines = []
         service = RAGService(
             pipelines=pipelines, file_metadata_path=sample_metadata_file
         )
-        service.client = mock_llama_stack_client
+        service.client = mock_ogx_client
         service.vector_store_map = {"legal": ["legal-vs-id"]}
 
         mock_file = Mock()
         mock_file.id = "file-id-1"
-        mock_llama_stack_client.vector_stores.files.list.return_value = [mock_file]
+        mock_ogx_client.vector_stores_files.list.return_value = Mock(
+            data=[mock_file]
+        )
 
         sources = service._get_files_from_vector_store("legal")
 
@@ -512,13 +516,13 @@ class TestGetFilesFromVectorStore:
 
         assert sources == []
 
-    def test_get_files_from_vector_store_with_error(self, mock_llama_stack_client):
+    def test_get_files_from_vector_store_with_error(self, mock_ogx_client):
         pipelines = []
         service = RAGService(pipelines=pipelines)
-        service.client = mock_llama_stack_client
+        service.client = mock_ogx_client
         service.vector_store_map = {"legal": ["legal-vs-id"]}
 
-        mock_llama_stack_client.vector_stores.files.list.side_effect = Exception(
+        mock_ogx_client.vector_stores_files.list.side_effect = Exception(
             "Error"
         )
 
@@ -620,17 +624,19 @@ class TestValidateAndRegenerateMetadata:
         # Metadata should remain unchanged
         assert "old-file-id" in service.file_metadata
 
-    def test_skips_regeneration_when_metadata_matches(self, mock_llama_stack_client):
+    def test_skips_regeneration_when_metadata_matches(self, mock_ogx_client):
         """Test that regeneration is skipped when metadata matches vector store files."""
         pipelines = []
         service = RAGService(pipelines=pipelines)
-        service.client = mock_llama_stack_client
+        service.client = mock_ogx_client
         service.vector_store_map = {"legal": ["legal-vs-id"]}
 
         # Setup: file in vector store matches metadata
         mock_file = Mock()
         mock_file.id = "file-id-1"
-        mock_llama_stack_client.vector_stores.files.list.return_value = [mock_file]
+        mock_ogx_client.vector_stores_files.list.return_value = Mock(
+            data=[mock_file]
+        )
 
         service.file_metadata = {
             "file-id-1": {
@@ -645,18 +651,20 @@ class TestValidateAndRegenerateMetadata:
         # Metadata should remain unchanged (not regenerated)
         assert service.file_metadata["file-id-1"]["original_filename"] == "test.pdf"
 
-    def test_triggers_regeneration_when_metadata_mismatch(self, mock_llama_stack_client):
+    def test_triggers_regeneration_when_metadata_mismatch(self, mock_ogx_client):
         """Test that regeneration is triggered when metadata doesn't match."""
         pipelines = []
         service = RAGService(pipelines=pipelines)
-        service.client = mock_llama_stack_client
+        service.client = mock_ogx_client
         service.vector_store_map = {"legal": ["legal-vs-id"]}
         service.source_url_map = {"legal": "https://github.com/test/repo/blob/main/docs"}
 
         # Setup: file in vector store does NOT match metadata
         mock_file = Mock()
         mock_file.id = "new-file-id"  # Different from metadata
-        mock_llama_stack_client.vector_stores.files.list.return_value = [mock_file]
+        mock_ogx_client.vector_stores_files.list.return_value = Mock(
+            data=[mock_file]
+        )
 
         # Old metadata with different file_id
         service.file_metadata = {
@@ -670,7 +678,7 @@ class TestValidateAndRegenerateMetadata:
         # Mock files.retrieve to return filename
         mock_file_info = Mock()
         mock_file_info.filename = "NewDocument.txt"
-        mock_llama_stack_client.files.retrieve.return_value = mock_file_info
+        mock_ogx_client.files.retrieve.return_value = mock_file_info
 
         service._validate_and_regenerate_metadata()
 
@@ -678,14 +686,14 @@ class TestValidateAndRegenerateMetadata:
         assert "new-file-id" in service.file_metadata
         assert "old-file-id" not in service.file_metadata
 
-    def test_handles_empty_vector_stores(self, mock_llama_stack_client):
+    def test_handles_empty_vector_stores(self, mock_ogx_client):
         """Test handling when vector stores have no files."""
         pipelines = []
         service = RAGService(pipelines=pipelines)
-        service.client = mock_llama_stack_client
+        service.client = mock_ogx_client
         service.vector_store_map = {"legal": ["legal-vs-id"]}
 
-        mock_llama_stack_client.vector_stores.files.list.return_value = []
+        mock_ogx_client.vector_stores_files.list.return_value = []
 
         service.file_metadata = {"old-file-id": {"original_filename": "test.pdf"}}
 
@@ -700,17 +708,17 @@ class TestRegenerateFileMetadata:
     tests for _regenerate_file_metadata method.
     """
 
-    def test_regenerates_metadata_with_valid_filename(self, mock_llama_stack_client):
-        """Test regeneration with a valid filename from Llama Stack."""
+    def test_regenerates_metadata_with_valid_filename(self, mock_ogx_client):
+        """Test regeneration with a valid filename from OGX."""
         pipelines = []
         service = RAGService(pipelines=pipelines)
-        service.client = mock_llama_stack_client
+        service.client = mock_ogx_client
         service.source_url_map = {"legal": "https://github.com/test/repo/blob/main/docs"}
 
         # Mock files.retrieve to return a .txt filename (as ingested)
         mock_file_info = Mock()
         mock_file_info.filename = "TestDocument.txt"
-        mock_llama_stack_client.files.retrieve.return_value = mock_file_info
+        mock_ogx_client.files.retrieve.return_value = mock_file_info
 
         file_id_to_category = {"file-123": "legal"}
 
@@ -724,16 +732,16 @@ class TestRegenerateFileMetadata:
         )
         assert service.file_metadata["file-123"]["category"] == "legal"
 
-    def test_regenerates_metadata_with_path_in_filename(self, mock_llama_stack_client):
+    def test_regenerates_metadata_with_path_in_filename(self, mock_ogx_client):
         """Test that full paths in filename are cleaned up."""
         pipelines = []
         service = RAGService(pipelines=pipelines)
-        service.client = mock_llama_stack_client
+        service.client = mock_ogx_client
         service.source_url_map = {"hr": "https://github.com/test/repo/blob/main/hr"}
 
         mock_file_info = Mock()
         mock_file_info.filename = "/tmp/downloads/HRPolicy.txt"
-        mock_llama_stack_client.files.retrieve.return_value = mock_file_info
+        mock_ogx_client.files.retrieve.return_value = mock_file_info
 
         file_id_to_category = {"file-456": "hr"}
 
@@ -741,16 +749,16 @@ class TestRegenerateFileMetadata:
 
         assert service.file_metadata["file-456"]["original_filename"] == "HRPolicy.pdf"
 
-    def test_fallback_for_temp_filename(self, mock_llama_stack_client):
+    def test_fallback_for_temp_filename(self, mock_ogx_client):
         """Test fallback when filename looks like a random temp file."""
         pipelines = []
         service = RAGService(pipelines=pipelines)
-        service.client = mock_llama_stack_client
+        service.client = mock_ogx_client
         service.source_url_map = {"legal": "https://github.com/test/repo/blob/main/docs"}
 
         mock_file_info = Mock()
         mock_file_info.filename = "tmp12345678.txt"  # Random temp filename
-        mock_llama_stack_client.files.retrieve.return_value = mock_file_info
+        mock_ogx_client.files.retrieve.return_value = mock_file_info
 
         file_id_to_category = {"file-789": "legal"}
 
@@ -762,15 +770,15 @@ class TestRegenerateFileMetadata:
             "https://github.com/test/repo/blob/main/docs"
         )
 
-    def test_fallback_when_no_filename(self, mock_llama_stack_client):
+    def test_fallback_when_no_filename(self, mock_ogx_client):
         """Test fallback when file info has no filename."""
         pipelines = []
         service = RAGService(pipelines=pipelines)
-        service.client = mock_llama_stack_client
+        service.client = mock_ogx_client
         service.source_url_map = {"sales": "https://github.com/test/repo/blob/main/sales"}
 
         mock_file_info = Mock(spec=[])  # No filename attribute
-        mock_llama_stack_client.files.retrieve.return_value = mock_file_info
+        mock_ogx_client.files.retrieve.return_value = mock_file_info
 
         file_id_to_category = {"file-abc": "sales"}
 
@@ -778,14 +786,14 @@ class TestRegenerateFileMetadata:
 
         assert service.file_metadata["file-abc"]["original_filename"] == "Document from sales"
 
-    def test_fallback_when_retrieve_fails(self, mock_llama_stack_client):
+    def test_fallback_when_retrieve_fails(self, mock_ogx_client):
         """Test fallback when files.retrieve raises an exception."""
         pipelines = []
         service = RAGService(pipelines=pipelines)
-        service.client = mock_llama_stack_client
+        service.client = mock_ogx_client
         service.source_url_map = {"procurement": "https://github.com/test/repo/blob/main/procurement"}
 
-        mock_llama_stack_client.files.retrieve.side_effect = Exception("File not found")
+        mock_ogx_client.files.retrieve.side_effect = Exception("File not found")
 
         file_id_to_category = {"file-xyz": "procurement"}
 

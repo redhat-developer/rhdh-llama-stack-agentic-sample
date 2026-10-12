@@ -47,9 +47,9 @@ spec:
               value: "/tmp/.cache/huggingface"
             # Service URLs
             - name: LLAMA_STACK_URL
-              value: "http://${{ values.name }}-llama-stack:8321"
+              value: "http://${{ values.name }}-ogx:8321"
             - name: LLAMA_STACK_SERVER_OPENAI
-              value: "http://${{ values.name }}-llama-stack:8321/v1/openai/v1"
+              value: "http://${{ values.name }}-ogx:8321/v1/openai/v1"
             - name: MCP_SERVER_URL
               value: "http://${{ values.name }}-mcp-server:8080/mcp"
           ports:

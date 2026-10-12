@@ -1,13 +1,15 @@
 [project]
 name = "rhdh-llama-stack-agentic-sample"
 version = "0.1.0"
-description = "Llama-Stack LangGraph Customer Service Example"
+description = "OGX LangGraph Customer Service Example"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "docling>=2.63.0",
-    "llama-stack-client>=0.3.1",
-    "llama-stack>=0.3.1",
+    # Python SDK used to call the OGX (Open GenAI Stack) server APIs.
+    "ogx-client==1.2.5",
+    # OpenAI SDK used for the Responses/Chat/Moderations compatibility endpoints.
+    "openai>=2.14.0,<3",
     "pygithub>=2.8.1",
     "pyyaml>=6.0.3",
     "langgraph>=1.0.4",

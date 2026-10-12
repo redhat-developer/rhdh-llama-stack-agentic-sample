@@ -1,4 +1,4 @@
-site_name: 'Llama Stack Agentic AI Workflow - Template Documentation'
+site_name: 'OGX Agentic AI Workflow - Template Documentation'
 nav:
   - Overview: index.md
   - Prerequisites: template-prerequisites.md

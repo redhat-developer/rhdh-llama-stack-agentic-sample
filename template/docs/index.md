@@ -1,10 +1,10 @@
-# **Llama Stack Agentic AI Workflow - Software Template Overview**
+# **OGX Agentic AI Workflow - Software Template Overview**
 
-This Software Template deploys a sophisticated **AI Agentic Workflow** application that provides an intelligent chat interface for dynamic, stateful workflow orchestration using both **LangGraph** and **Llama Stack**.
+This Software Template deploys a sophisticated **AI Agentic Workflow** application that provides an intelligent chat interface for dynamic, stateful workflow orchestration using both **LangGraph** and **OGX**.
 
 ## **What This Application Does**
 
-The Llama Stack Agentic application serves as a prototype chat interface that:
+The OGX Agentic application serves as a prototype chat interface that:
 
 1. **Classifies User Questions** - Takes incoming questions and dynamically routes them to specialized AI Agents based on the content and intent of the prompt
 2. **Multi-Agent Orchestration** - Employs multiple specialized agents for different domains:
@@ -25,7 +25,7 @@ This template deploys four interconnected services:
 | Component | Port | Description |
 |-----------|------|-------------|
 | **Streamlit UI** | 8501 | Interactive chat interface |
-| **Llama Stack Server** | 8321 | AI inference orchestration |
+| **OGX Server** | 8321 | AI inference orchestration |
 | **Ollama** | 11434 | Local LLM inference engine |
 | **Kubernetes MCP Server** | 8080 | Cluster introspection tools |
 
@@ -41,7 +41,7 @@ This template deploys four interconnected services:
 
 ## **Model Server Options**
 
-The template supports multiple inference providers through Llama Stack:
+The template supports multiple inference providers through OGX:
 
 - **vLLM** - High-throughput GPU-accelerated inference (requires NVIDIA GPUs)
 - **Ollama** - Local model inference for development
@@ -50,6 +50,6 @@ The template supports multiple inference providers through Llama Stack:
 ## **Additional Resources**
 
 - [The Deployable Application](./application.md)
-- [Using the Llama Stack Agentic Template](./usage.md)
+- [Using the OGX Agentic Template](./usage.md)
 - [Template Prerequisites](./template-prerequisites.md)
 

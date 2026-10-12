@@ -1,4 +1,4 @@
-# **Llama Stack Agentic Template Prerequisites**
+# **OGX Agentic Template Prerequisites**
 
 Before using this Software Template, ensure your environment meets the following requirements.
 
@@ -25,7 +25,7 @@ The template deploys four services with the following requirements:
 | Component | CPU Request | Memory Request | CPU Limit | Memory Limit |
 |-----------|-------------|----------------|-----------|--------------|
 | Streamlit UI | 500m | 2Gi | 2000m | 6Gi |
-| Llama Stack | 500m | 2Gi | 2000m | 8Gi |
+| OGX | 500m | 2Gi | 2000m | 8Gi |
 | Ollama | 1000m | 4Gi | 4000m | 16Gi |
 | MCP Server | 100m | 128Mi | 500m | 512Mi |
 
@@ -35,7 +35,7 @@ The template deploys four services with the following requirements:
 
 - **20Gi PersistentVolumeClaim** for Ollama models (e.g., llama-guard3:8b ~5GB)
 - Storage class with `ReadWriteOnce` access mode
-- Llama Stack uses ephemeral storage (emptyDir) - data is lost on pod restart
+- OGX uses ephemeral storage (emptyDir) - data is lost on pod restart
 
 ## **External Dependencies**
 
@@ -127,9 +127,9 @@ The following external endpoints must be accessible:
 Services communicate internally:
 
 ```
-Streamlit UI (8501) → Llama Stack (8321)
-Llama Stack (8321) → Ollama (11434)
-Llama Stack (8321) → MCP Server (8080)
+Streamlit UI (8501) → OGX (8321)
+OGX (8321) → Ollama (11434)
+OGX (8321) → MCP Server (8080)
 MCP Server (8080) → Kubernetes API (443)
 ```
 
