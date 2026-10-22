@@ -2,14 +2,14 @@ apiVersion: scaffolder.backstage.io/v1beta3
 # https://backstage.io/docs/features/software-catalog/descriptor-format#kind-template
 kind: Template
 metadata:
-  name: llama-stack-agentic
-  title: Llama Stack Agentic AI Workflow
+  name: ogx-agentic
+  title: OGX Agentic AI Workflow
   description: |
     Deploy a sophisticated AI Agentic Workflow application that provides an intelligent 
     chat interface with dynamic, stateful workflow orchestration using LangGraph and 
-    Llama Stack. Features multi-agent routing, RAG-powered responses, Kubernetes 
+    OGX. Features multi-agent routing, RAG-powered responses, Kubernetes 
     integration via MCP, and content safety guardrails.
-  tags: ["ai", "llama-stack", "langgraph", "mcp", "rag", "agents", "kubernetes", "streamlit"]
+  tags: ["ai", "ogx", "langgraph", "mcp", "rag", "agents", "kubernetes", "streamlit"]
   annotations:
     backstage.io/techdocs-ref: dir:.
 spec:
@@ -52,7 +52,7 @@ spec:
           title: ArgoCD Namespace
           type: string
           description: The target namespace of the ArgoCD deployment
-          default: openshift-gitops
+          default: ai-rhdh
           maxLength: 63
         argoInstance:
           title: ArgoCD Instance
@@ -83,9 +83,9 @@ spec:
                   type: string
                   description: Label RHDH uses to identify ArgoCD Applications
 
-    # ==================== Llama Stack Configuration ====================
-    - title: Llama Stack Configuration
-      description: Configure the Llama Stack AI inference server.
+    # ==================== OGX Configuration ====================
+    - title: OGX Configuration
+      description: Configure the OGX AI inference server.
       required:
         - vllmUrl
       ui:order:
@@ -194,12 +194,12 @@ spec:
         All secrets must exist in the specified namespace. See TechDocs Usage page under "Required Secrets" for examples.
       required:
         - namespace
-        - llamaStackSecretName
+        - ogxSecretName
         - platformCredentialsSecretName
         - secretsAcknowledgment
       ui:order:
         - namespace
-        - llamaStackSecretName
+        - ogxSecretName
         - platformCredentialsSecretName
         - secretsAcknowledgment
         - '*'
@@ -209,10 +209,10 @@ spec:
           type: string
           description: Kubernetes namespace where the application and secrets will be deployed
           ui:help: "Example: rhdh-app"
-        llamaStackSecretName:
-          title: Llama Stack Secrets Name
+        ogxSecretName:
+          title: OGX Secrets Name
           type: string
-          default: llama-stack-secrets
+          default: ogx-secrets
           description: |
             • VLLM_API_KEY - API key for vLLM inference server
             • OPENAI_API_KEY - OpenAI API key for embeddings and inference
@@ -345,12 +345,12 @@ spec:
         values:
           name: ${{ parameters.name }}
           namespace: ${{ parameters.namespace }}
-          description: Llama Stack Agentic AI Workflow Application
+          description: OGX Agentic AI Workflow Application
           dockerfile: Containerfile
           buildContext: .
           gitopsSecretName: ${{ 'gitops-auth-secret' if parameters.hostType === 'GitHub' else 'gitlab-auth-secret' }}
           image: '${{ parameters.imageRegistry }}/${{ parameters.imageOrg }}/${{ parameters.imageName }}'
-          tags: '["ai", "llama-stack", "langgraph", "mcp", "rag", "agents"]'
+          tags: '["ai", "ogx", "langgraph", "mcp", "rag", "agents"]'
           owner: ${{ parameters.owner }}
           repoSlug: '${{ parameters.imageOrg }}/${{ parameters.imageName }}'
           defaultBranch: ${{ parameters.branch }}
@@ -371,7 +371,7 @@ spec:
       if: ${{ parameters.hostType === 'GitHub' }}
       input:
         sourcePath: source
-        description: Llama Stack Agentic AI Workflow - ${{ parameters.name }}
+        description: OGX Agentic AI Workflow - ${{ parameters.name }}
         repoUrl: ${{ parameters.githubServer }}?owner=${{ parameters.repoOwner }}&repo=${{ parameters.repoName }}
         defaultBranch: ${{ parameters.branch }}
         protectDefaultBranch: true
@@ -388,7 +388,7 @@ spec:
       if: ${{ parameters.hostType === 'GitLab' }}
       input:
         sourcePath: source
-        description: Llama Stack Agentic AI Workflow - ${{ parameters.name }}
+        description: OGX Agentic AI Workflow - ${{ parameters.name }}
         repoUrl: ${{ parameters.gitlabServer }}?owner=${{ parameters.repoOwner }}&repo=${{ parameters.repoName }}
         defaultBranch: ${{ parameters.branch }}
         protectDefaultBranch: false
@@ -405,7 +405,7 @@ spec:
         values:
           name: ${{ parameters.name }}
           appName: ${{ parameters.name }}-gitops
-          description: GitOps manifest for Llama Stack Agentic - ${{ parameters.name }}
+          description: GitOps manifest for OGX Agentic - ${{ parameters.name }}
           namespace: ${{ parameters.namespace }}
           rhdhNamespace: ai-rhdh
           repoURL: https://${{ parameters.githubServer if parameters.hostType === 'GitHub' else parameters.gitlabServer }}/${{ parameters.repoOwner }}/${{ parameters.repoName }}-gitops
@@ -422,12 +422,12 @@ spec:
           defaultBranch: main
           # Application container image
           appContainer: quay.io/redhat-ai-dev/agentic-sample:latest
-          llamaStackContainer: quay.io/redhat-ai-dev/agentic-llama-stack:latest
+          ogxContainer: quay.io/redhat-ai-dev/agentic-ogx:latest
           appPort: 8501
-          # Llama Stack configuration
+          # OGX configuration
           vllmUrl: ${{ parameters.vllmUrl }}
           safetyModel: ${{ parameters.safetyModel }}
-          llamaStackSecretName: ${{ parameters.llamaStackSecretName }}
+          ogxSecretName: ${{ parameters.ogxSecretName }}
           # Application configuration
           inferenceModel: ${{ parameters.inferenceModel }}
           mcpToolModel: ${{ parameters.mcpToolModel }}
@@ -461,7 +461,7 @@ spec:
       if: ${{ parameters.hostType === 'GitHub' }}
       input:
         sourcePath: gitops
-        description: GitOps repository for Llama Stack Agentic - ${{ parameters.name }}
+        description: GitOps repository for OGX Agentic - ${{ parameters.name }}
         repoUrl: ${{ parameters.githubServer }}?owner=${{ parameters.repoOwner }}&repo=${{ parameters.repoName }}-gitops
         defaultBranch: "main"
         protectDefaultBranch: false
@@ -474,7 +474,7 @@ spec:
       if: ${{ parameters.hostType === 'GitLab' }}
       input:
         sourcePath: gitops
-        description: GitOps repository for Llama Stack Agentic - ${{ parameters.name }}
+        description: GitOps repository for OGX Agentic - ${{ parameters.name }}
         repoUrl: ${{ parameters.gitlabServer }}?owner=${{ parameters.repoOwner }}&repo=${{ parameters.repoName }}-gitops
         defaultBranch: "main"
         protectDefaultBranch: false

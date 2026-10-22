@@ -2,7 +2,7 @@ import os
 import time
 from typing import Any, cast
 
-from llama_stack_client.types import ResponseObject
+from ogx_client import OpenAIResponseObject as ResponseObject
 from openai import OpenAI
 from openai.types.chat import ChatCompletionUserMessageParam
 
@@ -14,6 +14,61 @@ from src.utils import extract_mcp_output, logger, submission_states
 
 # MCP Server URL - read from environment or use default
 MCP_SERVER_URL = os.environ.get("MCP_SERVER_URL", DEFAULT_MCP_SERVER_URL)
+
+# Llama Guard 3 hazard taxonomy: maps the S-codes the model emits to
+# human-readable category names. OGX 1.2.5 removed the server-side
+# /v1/moderations endpoint, so the guardrail runs the configured guard model
+# (e.g. ollama/llama-guard3:8b) directly via chat completions instead.
+LLAMA_GUARD_CATEGORIES = {
+    "S1": "Violent Crimes",
+    "S2": "Non-Violent Crimes",
+    "S3": "Sex-Related Crimes",
+    "S4": "Child Sexual Exploitation",
+    "S5": "Defamation",
+    "S6": "Specialized Advice",
+    "S7": "Privacy",
+    "S8": "Intellectual Property",
+    "S9": "Indiscriminate Weapons",
+    "S10": "Hate",
+    "S11": "Suicide & Self-Harm",
+    "S12": "Sexual Content",
+    "S13": "Elections",
+    "S14": "Code Interpreter Abuse",
+}
+
+
+def run_guardrail(
+    openai_client: "OpenAI", guardrail_model: str, text: str
+) -> "tuple[bool, list[str]]":
+    """Screen text for unsafe content with a Llama Guard chat model.
+
+    OGX 1.2.5 no longer serves an OpenAI-compatible /v1/moderations endpoint,
+    so instead of ``openai_client.moderations.create()`` the text is sent to the
+    guard model as a chat completion. Llama Guard replies with ``safe`` or
+    ``unsafe`` followed by a newline and the violated S-codes (e.g. ``S1,S10``).
+
+    Returns a ``(flagged, categories)`` tuple where ``categories`` holds the
+    human-readable names of the violated hazard categories.
+    """
+    guard_messages: "list[ChatCompletionUserMessageParam]" = [
+        {"role": "user", "content": text}
+    ]
+    guard_completion = openai_client.chat.completions.create(
+        model=guardrail_model,
+        messages=guard_messages,
+    )
+    verdict = (guard_completion.choices[0].message.content or "").strip()
+    if not verdict.lower().startswith("unsafe"):
+        return False, []
+
+    # The line after "unsafe" lists the violated S-codes, if any.
+    codes_line = verdict.split("\n", 1)[1].strip() if "\n" in verdict else ""
+    categories = [
+        LLAMA_GUARD_CATEGORIES.get(code.strip(), code.strip())
+        for code in codes_line.split(",")
+        if code.strip()
+    ]
+    return True, categories
 
 
 def classification_agent(
@@ -55,25 +110,17 @@ def classification_agent(
         )
 
     # checking if the input is safe
-    safety_response = openai_client.moderations.create(
-        model=guardrail_model, input=str(state["input"])
+    flagged, flagged_categories = run_guardrail(
+        openai_client, guardrail_model, str(state["input"])
     )
 
-    for moderation in safety_response.results:
-        if not moderation.flagged:
-            continue
-
+    if flagged:
         logger.info(
-            f"Classification result: '{state['input']}' is flagged as '{moderation}'"
+            f"Classification result: '{state['input']}' is flagged as unsafe "
+            f"for: {flagged_categories}"
         )
         state["decision"] = "unsafe"
         state["data"] = state["input"]
-        model_extra = moderation.categories.model_extra
-        flagged_categories = [
-            key
-            for key, value in (model_extra.items() if model_extra else [])
-            if value is True
-        ]
         categories_str = ", ".join(flagged_categories)
         state["classification_message"] = (
             f"Classification result: '{state['input']}' "
@@ -90,13 +137,10 @@ def classification_agent(
         logger.debug(f"Classification prompt: {classification_prompt}")
 
         messages: "list[ChatCompletionUserMessageParam]" = [
-            cast(
-                ChatCompletionUserMessageParam,
-                {
-                    "role": "user",
-                    "content": classification_prompt,
-                },
-            )
+            {
+                "role": "user",
+                "content": classification_prompt,
+            }
         ]
         completion = openai_client.beta.chat.completions.parse(
             model=topic_llm,
@@ -114,7 +158,11 @@ def classification_agent(
             logger.error("Failed to get structured response from the model.")
             state["decision"] = "unknown"
             state["data"] = state["input"]
-            state["classification_message"] = "Unable to determine request type."
+            state["classification_message"] = (
+                "I couldn't match your request to a department. Try rephrasing "
+                "with a specific topic — for example legal, HR, sales, "
+                "procurement, or technical support."
+            )
             state["workflow_complete"] = True
             return state
 
@@ -133,7 +181,11 @@ def classification_agent(
             )
             state["decision"] = "unknown"
             state["data"] = state["input"]
-            state["classification_message"] = "Unable to determine request type."
+            state["classification_message"] = (
+                "I couldn't match your request to a department. Try rephrasing "
+                "with a specific topic — for example legal, HR, sales, "
+                "procurement, or technical support."
+            )
             state["workflow_complete"] = True
             return state
 
@@ -150,6 +202,18 @@ def classification_agent(
 
     state["decision"] = classification_result.classification
     state["data"] = state["input"]
+
+    # The model can legitimately classify a request as 'unknown' when it does
+    # not fit any department. Surface this as a friendly, actionable prompt
+    # instead of a generic error so the UI renders the graceful "Unable to
+    # Process" path rather than "An error occurred."
+    if classification_result.classification == "unknown":
+        state["classification_message"] = (
+            "I couldn't match your request to a department. Try rephrasing with "
+            "a specific topic — for example legal, HR, sales, procurement, or "
+            "technical support."
+        )
+        state["workflow_complete"] = True
 
     agent_end_time = time.time()
     state["agent_timings"]["Classification"] = agent_end_time - agent_start_time
@@ -203,15 +267,12 @@ def support_classification_agent(
 
     try:
         messages: "list[ChatCompletionUserMessageParam]" = [
-            cast(
-                ChatCompletionUserMessageParam,
-                {
-                    "role": "user",
-                    "content": WorkflowAgentPrompts.SUPPORT_CLASSIFICATION_PROMPT.format(  # noqa
-                        state_input=state["input"]
-                    ),
-                },
-            )
+            {
+                "role": "user",
+                "content": WorkflowAgentPrompts.SUPPORT_CLASSIFICATION_PROMPT.format(  # noqa
+                    state_input=state["input"]
+                ),
+            }
         ]
         completion = openai_client.beta.chat.completions.parse(
             model=topic_llm,
@@ -304,7 +365,7 @@ def git_agent(
         "type": "mcp",
         "server_label": "github",
         "server_url": "https://api.githubcopilot.com/mcp/",
-        "headers": {"Authorization": f"Bearer {git_token}"},
+        "authorization": git_token,
         "allowed_tools": ["issue_write", "add_issue_comment"],
     }
 

@@ -7,16 +7,16 @@ DEFAULT_EMBEDDING_DIMENSION = 128
 DEFAULT_CHUNK_SIZE_IN_TOKENS = 512
 
 # DEFAULT_LLAMA_STACK_URL: The default URL for
-# connecting to the Llama Stack service.
+# connecting to the OGX service.
 DEFAULT_LLAMA_STACK_URL = "http://localhost:8321"
 
-# DEFAULT_LLAMA_STACK_WAITING_RETRIES: The default number
-# of retries for waiting operations in Llama Stack.
-DEFAULT_LLAMA_STACK_WAITING_RETRIES = 2
+# DEFAULT_OGX_WAITING_RETRIES: The default number
+# of retries for waiting operations in OGX.
+DEFAULT_OGX_WAITING_RETRIES = 2
 
-# DEFAULT_LLAMA_STACK_RETRY_DELAY: The default delay in
-# seconds between retries in Llama Stack.
-DEFAULT_LLAMA_STACK_RETRY_DELAY = 5
+# DEFAULT_OGX_RETRY_DELAY: The default delay in
+# seconds between retries in OGX.
+DEFAULT_OGX_RETRY_DELAY = 5
 
 # DEFAULT_HTTP_REQUEST_TIMEOUT: The default timeout in
 # seconds for HTTP requests.

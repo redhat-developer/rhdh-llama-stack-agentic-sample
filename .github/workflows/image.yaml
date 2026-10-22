@@ -1,4 +1,4 @@
-name: CI/CD App, Llama Stack Image Build and Push
+name: CI/CD App, OGX Image Build and Push
 
 on:
   push:
@@ -23,8 +23,8 @@ jobs:
         include:
           - image_name: agentic-sample
             containerfile: Containerfile
-          - image_name: agentic-llama-stack
-            containerfile: Containerfile.llama-stack
+          - image_name: agentic-ogx
+            containerfile: Containerfile.ogx
 
     steps:
       - name: Free Disk Space

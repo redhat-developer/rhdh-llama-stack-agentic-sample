@@ -1,6 +1,6 @@
 # 🦙 ${{ values.name }}
 
-> **Llama Stack Agentic AI Workflow** — An intelligent multi-agent chat application powered by LangGraph, Llama Stack, and MCP
+> **OGX Agentic AI Workflow** — An intelligent multi-agent chat application powered by LangGraph, OGX, and MCP
 
 ---
 
@@ -55,7 +55,7 @@ This application is deployed automatically via GitOps. To make changes:
 ## 🛠️ Tech Stack
 
 - **Frontend**: Streamlit
-- **AI Framework**: Llama Stack + LangGraph
+- **AI Framework**: OGX + LangGraph
 - **Vector Store**: FAISS
 - **Inference**: vLLM / OpenAI
 - **Safety**: Ollama (Llama Guard)
@@ -66,7 +66,7 @@ This application is deployed automatically via GitOps. To make changes:
 
 ## 🤝 Contribute to the Template
 
-This application was generated from the **Llama Stack Agentic AI Workflow** Software Template.
+This application was generated from the **OGX Agentic AI Workflow** Software Template.
 
 Want to improve the template, report issues, or contribute new features? Visit the upstream repository:
 

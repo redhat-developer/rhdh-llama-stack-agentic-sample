@@ -35,13 +35,10 @@ class TestClassificationAgent:
     def test_classification_agent_with_unsafe_content(
         self, sample_workflow_state, mock_openai_client
     ):
-        moderation_result = Mock()
-        moderation_result.flagged = True
-        moderation_result.categories = Mock(violence=Mock(name="violence"))
-        moderation_result.categories.model_extra = {"violence": True}
-        mock_moderation_response = Mock()
-        mock_moderation_response.results = [moderation_result]
-        mock_openai_client.moderations.create.return_value = mock_moderation_response
+        # Llama Guard flags unsafe input with "unsafe" + violated S-codes.
+        mock_guard_completion = Mock()
+        mock_guard_completion.choices = [Mock(message=Mock(content="unsafe\nS1"))]
+        mock_openai_client.chat.completions.create.return_value = mock_guard_completion
 
         result = classification_agent(
             sample_workflow_state,
@@ -52,6 +49,37 @@ class TestClassificationAgent:
 
         assert result["decision"] == "unsafe"
         assert result["workflow_complete"] is True
+
+    def test_classification_agent_unknown_sets_graceful_message(
+        self, sample_workflow_state, mock_openai_client
+    ):
+        # Model classifies an off-topic request as 'unknown'. The agent should
+        # mark the workflow complete and attach a friendly rephrase prompt so the
+        # UI renders the graceful path instead of a generic error.
+        class ParsedResult:
+            def __init__(self):
+                self.classification = "unknown"
+
+        mock_message = Mock()
+        mock_message.parsed = ParsedResult()
+        mock_parsed_message = Mock()
+        mock_parsed_message.message = mock_message
+        mock_parsed_completion = Mock()
+        mock_parsed_completion.choices = [mock_parsed_message]
+        mock_openai_client.beta.chat.completions.parse.return_value = (
+            mock_parsed_completion
+        )
+
+        result = classification_agent(
+            sample_workflow_state,
+            mock_openai_client,
+            "test-model",
+            "guardrail-model",
+        )
+
+        assert result["decision"] == "unknown"
+        assert result["workflow_complete"] is True
+        assert "rephrasing" in result["classification_message"].lower()
 
     def test_classification_agent_without_openai_client(self, sample_workflow_state):
         with pytest.raises(AgentRunMethodParameterError):

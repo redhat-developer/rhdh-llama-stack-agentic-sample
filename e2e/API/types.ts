@@ -17,7 +17,7 @@ export interface LlsTemplateValues {
   githubServer: string
   repoOwner: string
   repoName: string
-  llamaStackSecretName: string
+  ogxSecretName: string
   platformCredentialsSecretName: string
   secretsAcknowledgment: boolean
   namespace: string,

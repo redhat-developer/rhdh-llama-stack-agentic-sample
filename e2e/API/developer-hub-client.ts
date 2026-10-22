@@ -90,7 +90,7 @@ export class DeveloperHubClient {
         githubServer: options.githubServer,
         repoOwner: options.repoOwner,
         repoName: options.repoName,
-        llamaStackSecretName: options.llamaStackSecretName,
+        ogxSecretName: options.ogxSecretName,
         platformCredentialsSecretName: options.platformCredentialsSecretName,
         secretsAcknowledgment: options.secretsAcknowledgment,
         namespace: options.namespace,

@@ -1,4 +1,4 @@
-# Llama Stack Agentic Application Container
+# OGX Agentic Application Container
 # Multi-stage build for smaller, more secure image
 
 # =============================================================================
@@ -78,10 +78,10 @@ USER 1001
 CMD ["streamlit", "run", "streamlit_app.py", "--server.address=0.0.0.0"]
 
 # Labels
-LABEL com.redhat.component=llama-stack-agentic-app \
-      description="Llama Stack Agentic AI Workflow Application" \
-      io.k8s.description="Llama Stack Agentic AI Workflow Application" \
-      io.k8s.display-name="Llama Stack Agentic App" \
-      io.openshift.tags="ai,llama-stack,streamlit,agents,rag" \
-      name=llama-stack-agentic-app \
+LABEL com.redhat.component=ogx-agentic-app \
+      description="OGX Agentic AI Workflow Application" \
+      io.k8s.description="OGX Agentic AI Workflow Application" \
+      io.k8s.display-name="OGX Agentic App" \
+      io.openshift.tags="ai,ogx,streamlit,agents,rag" \
+      name=ogx-agentic-app \
       summary="Streamlit application for agentic AI workflows"

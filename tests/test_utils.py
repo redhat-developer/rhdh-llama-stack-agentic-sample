@@ -1,11 +1,14 @@
 import json
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from src.utils import (
-    check_llama_stack_availability,
+    check_ogx_availability,
     clean_text,
     extract_mcp_output,
     extract_rag_response_text,
+    list_all_vector_store_files,
+    list_all_vector_stores,
     route_to_next_node,
     support_route_to_next_node,
 )
@@ -359,15 +362,15 @@ class TestExtractMcpOutput:
 
 class TestCheckLlamaStackAvailability:
     """
-    tests for check_llama_stack_availability function.
+    tests for check_ogx_availability function.
     """
 
     def test_successful_connection_without_model_check(self):
         mock_client = Mock()
         mock_client.models.list.return_value = []
 
-        with patch("src.utils.LlamaStackClient", return_value=mock_client):
-            result = check_llama_stack_availability("http://localhost:8321")
+        with patch("src.utils.OgxClient", return_value=mock_client):
+            result = check_ogx_availability("http://localhost:8321")
 
         assert result["connected"] is True
         assert result["error_message"] == ""
@@ -381,10 +384,10 @@ class TestCheckLlamaStackAvailability:
         mock_model2.identifier = "model-2"
 
         mock_client = Mock()
-        mock_client.models.list.return_value = [mock_model1, mock_model2]
+        mock_client.models.list.return_value = Mock(data=[mock_model1, mock_model2])
 
-        with patch("src.utils.LlamaStackClient", return_value=mock_client):
-            result = check_llama_stack_availability(
+        with patch("src.utils.OgxClient", return_value=mock_client):
+            result = check_ogx_availability(
                 "http://localhost:8321",
                 required_models=["model-1", "model-2"],
             )
@@ -399,10 +402,10 @@ class TestCheckLlamaStackAvailability:
         mock_model.identifier = "model-1"
 
         mock_client = Mock()
-        mock_client.models.list.return_value = [mock_model]
+        mock_client.models.list.return_value = Mock(data=[mock_model])
 
-        with patch("src.utils.LlamaStackClient", return_value=mock_client):
-            result = check_llama_stack_availability(
+        with patch("src.utils.OgxClient", return_value=mock_client):
+            result = check_ogx_availability(
                 "http://localhost:8321",
                 required_models=["model-1", "model-2", "model-3"],
             )
@@ -416,8 +419,8 @@ class TestCheckLlamaStackAvailability:
         mock_client = Mock()
         mock_client.models.list.return_value = []
 
-        with patch("src.utils.LlamaStackClient", return_value=mock_client):
-            result = check_llama_stack_availability(
+        with patch("src.utils.OgxClient", return_value=mock_client):
+            result = check_ogx_availability(
                 "http://localhost:8321",
                 required_models=["model-1", "model-2"],
             )
@@ -428,46 +431,46 @@ class TestCheckLlamaStackAvailability:
 
     def test_connection_refused_error(self):
         with patch(
-            "src.utils.LlamaStackClient",
+            "src.utils.OgxClient",
             side_effect=Exception("Connection refused"),
         ):
-            result = check_llama_stack_availability("http://localhost:8321")
+            result = check_ogx_availability("http://localhost:8321")
 
         assert result["connected"] is False
-        assert "Cannot connect to Llama Stack server" in result["error_message"]
+        assert "Cannot connect to OGX server" in result["error_message"]
         assert "http://localhost:8321" in result["error_message"]
         assert result["available_models"] == []
         assert result["missing_models"] == []
 
     def test_connect_error(self):
         with patch(
-            "src.utils.LlamaStackClient",
+            "src.utils.OgxClient",
             side_effect=Exception("ConnectError: Failed to establish connection"),
         ):
-            result = check_llama_stack_availability("http://localhost:8321")
+            result = check_ogx_availability("http://localhost:8321")
 
         assert result["connected"] is False
-        assert "Cannot connect to Llama Stack server" in result["error_message"]
+        assert "Cannot connect to OGX server" in result["error_message"]
 
     def test_timeout_error(self):
         with patch(
-            "src.utils.LlamaStackClient",
+            "src.utils.OgxClient",
             side_effect=Exception("Request timeout exceeded"),
         ):
-            result = check_llama_stack_availability("http://localhost:8321")
+            result = check_ogx_availability("http://localhost:8321")
 
         assert result["connected"] is False
         assert "timed out" in result["error_message"]
 
     def test_generic_error(self):
         with patch(
-            "src.utils.LlamaStackClient",
+            "src.utils.OgxClient",
             side_effect=Exception("Some unexpected error"),
         ):
-            result = check_llama_stack_availability("http://localhost:8321")
+            result = check_ogx_availability("http://localhost:8321")
 
         assert result["connected"] is False
-        assert "Llama Stack connection failed" in result["error_message"]
+        assert "OGX connection failed" in result["error_message"]
         assert "Some unexpected error" in result["error_message"]
 
     def test_model_with_id_attribute_instead_of_identifier(self):
@@ -475,10 +478,10 @@ class TestCheckLlamaStackAvailability:
         mock_model.id = "model-with-id"
 
         mock_client = Mock()
-        mock_client.models.list.return_value = [mock_model]
+        mock_client.models.list.return_value = Mock(data=[mock_model])
 
-        with patch("src.utils.LlamaStackClient", return_value=mock_client):
-            result = check_llama_stack_availability(
+        with patch("src.utils.OgxClient", return_value=mock_client):
+            result = check_ogx_availability(
                 "http://localhost:8321",
                 required_models=["model-with-id"],
             )
@@ -491,8 +494,8 @@ class TestCheckLlamaStackAvailability:
         mock_client = Mock()
         mock_client.models.list.return_value = []
 
-        with patch("src.utils.LlamaStackClient", return_value=mock_client):
-            result = check_llama_stack_availability(
+        with patch("src.utils.OgxClient", return_value=mock_client):
+            result = check_ogx_availability(
                 "http://localhost:8321",
                 required_models=[],
             )
@@ -505,8 +508,8 @@ class TestCheckLlamaStackAvailability:
         mock_client = Mock()
         mock_client.models.list.return_value = None
 
-        with patch("src.utils.LlamaStackClient", return_value=mock_client):
-            result = check_llama_stack_availability(
+        with patch("src.utils.OgxClient", return_value=mock_client):
+            result = check_ogx_availability(
                 "http://localhost:8321",
                 required_models=["model-1"],
             )
@@ -514,3 +517,67 @@ class TestCheckLlamaStackAvailability:
         assert result["connected"] is True
         assert result["available_models"] == []
         assert result["missing_models"] == ["model-1"]
+
+
+class TestPaginationHelpers:
+    """
+    tests for the paginated list helpers over OGX OpenAI-compatible
+    list endpoints (has_more / last_id cursor protocol).
+    """
+
+    def _client(self, pages):
+        """pages: list of (data_list, has_more, last_id) tuples returned in order."""
+        mock_client = Mock()
+        mock_client.vector_stores.list.side_effect = [
+            SimpleNamespace(data=d, has_more=m, last_id=l) for (d, m, l) in pages
+        ]
+        mock_client.vector_stores_files.list.side_effect = [
+            SimpleNamespace(data=d, has_more=m, last_id=l) for (d, m, l) in pages
+        ]
+        return mock_client
+
+    def test_single_page(self):
+        client = self._client([(["a", "b"], False, "b")])
+        assert list_all_vector_stores(client) == ["a", "b"]
+
+    def test_multi_page_follows_after_cursor(self):
+        client = self._client([(["a"], True, "a"), (["b"], False, "b")])
+        assert list_all_vector_stores(client) == ["a", "b"]
+        # second call passed after=last_id of first page
+        client.vector_stores.list.assert_called_with(limit=100, after="a")
+
+    def test_empty_page_with_has_more_continues(self):
+        client = self._client([([], True, "x"), (["a"], False, "a")])
+        assert list_all_vector_stores(client) == ["a"]
+
+    def test_max_pages_cap_returns_partial(self):
+        # has_more stays True forever; cap at max_pages=3, no exception
+        client = self._client([(["a"], True, "a")] * 5)
+        assert list_all_vector_stores(client, max_pages=3) == ["a", "a", "a"]
+
+    def test_missing_last_id_with_has_more_stops(self):
+        client = self._client([(["a"], True, None)])
+        assert list_all_vector_stores(client) == ["a"]
+
+    def test_files_variant_passes_vector_store_id(self):
+        client = self._client([(["f1"], False, "f1")])
+        assert list_all_vector_store_files(client, "vs-123") == ["f1"]
+        client.vector_stores_files.list.assert_called_once_with(
+            vector_store_id="vs-123", limit=100, after=None
+        )
+
+    def test_falsy_empty_page_with_has_more_continues(self):
+        """Real SDK pages are falsy when data is empty (pydantic __len__).
+
+        The helper must not treat a falsy page as 'no more pages': it must
+        still read has_more and follow the cursor.
+        """
+        from ogx_client.models import VectorStoreListResponse
+
+        client = Mock()
+        client.vector_stores.list.side_effect = [
+            # real SDK shape: empty page, falsy, but has_more=True
+            VectorStoreListResponse(data=[], first_id="", last_id="x", has_more=True),
+            SimpleNamespace(data=["a"], has_more=False, last_id="a"),
+        ]
+        assert list_all_vector_stores(client) == ["a"]
