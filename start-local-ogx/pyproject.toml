@@ -1,17 +1,18 @@
-# Llama Stack Server Dependencies
-# This is a minimal pyproject.toml for the Llama Stack server container
-# Used by Containerfile.llama-stack
+# OGX Server Dependencies
+# This is a minimal pyproject.toml for the OGX (formerly Llama Stack) server container
+# Used by Containerfile.ogx
 
 [project]
-name = "llama-stack-server"
+name = "ogx-server"
 version = "0.1.0"
-description = "Llama Stack Agentic AI Server"
+description = "OGX Agentic AI Server"
 requires-python = ">=3.12"
 dependencies = [
-    # Core Llama Stack - pinned to 0.3.5 (fixes env var handling bugs)
-    "llama-stack==0.3.5",
-    "llama-stack-client==0.3.5",
-    
+    # Core OGX (formerly Llama Stack) - pinned to 1.2.5
+    "ogx==1.2.5",
+    "ogx-client==1.2.5",
+    "ogx-api==1.2.5",
+
     # MCP (Model Context Protocol) for tool runtime
     "mcp>=1.23.1",
     
@@ -33,4 +34,9 @@ dependencies = [
     
     # Character encoding detection (required for file processing in vector stores)
     "chardet>=5.2.0",
+
+    # Document conversion for the file_processors "auto" provider
+    # (the inline::auto provider declares chardet + pypdf + markitdown[all])
+    "pypdf>=6.13.0",
+    "markitdown[all]>=0.1.0",
 ]

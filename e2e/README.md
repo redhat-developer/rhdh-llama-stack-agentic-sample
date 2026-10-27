@@ -1,4 +1,4 @@
-# E2E tests for llama stack agentic template
+# E2E tests for ogx agentic template
 
 Basic test suite that to verify the lls agentic app template runs and creates the appropriate resources.
 

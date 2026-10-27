@@ -1,5 +1,6 @@
 import json
 import os
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
@@ -10,18 +11,25 @@ from src.ingest import IngestionService
 from src.types import Pipeline, SourceConfig, SourceTypes
 
 
+def _page(items):
+    """Pagination-shaped mock page (has_more=False) for OGX list endpoints."""
+    return SimpleNamespace(
+        data=items, has_more=False, last_id=items[-1] if items else None
+    )
+
+
 class TestIngestionServiceInit:
     """
     tests for IngestionService initialization.
     """
 
-    def test_init_with_valid_config(self, sample_config_file, mock_llama_stack_client):
+    def test_init_with_valid_config(self, sample_config_file, mock_ogx_client):
         with patch(
-            "src.ingest.check_llama_stack_availability",
+            "src.ingest.check_ogx_availability",
             return_value={"connected": True, "error_message": ""},
         ):
             with patch(
-                "src.ingest.LlamaStackClient", return_value=mock_llama_stack_client
+                "src.ingest.OgxClient", return_value=mock_ogx_client
             ):
                 service = IngestionService(sample_config_file)
 
@@ -33,7 +41,7 @@ class TestIngestionServiceInit:
                 assert isinstance(service.pipelines, list)
 
     def test_init_with_invalid_config_missing_llamastack(
-        self, temp_dir, mock_llama_stack_client
+        self, temp_dir, mock_ogx_client
     ):
         invalid_config = {"vector_db": {}, "pipelines": {}}
         config_path = os.path.join(temp_dir, "invalid.yaml")
@@ -41,41 +49,41 @@ class TestIngestionServiceInit:
             yaml.dump(invalid_config, f)
 
         with patch(
-            "src.ingest.check_llama_stack_availability",
+            "src.ingest.check_ogx_availability",
             return_value={"connected": True, "error_message": ""},
         ):
             with patch(
-                "src.ingest.LlamaStackClient", return_value=mock_llama_stack_client
+                "src.ingest.OgxClient", return_value=mock_ogx_client
             ):
                 with pytest.raises(SystemExit):
                     IngestionService(config_path)
 
     def test_init_with_github_token(
-        self, sample_config_file, mock_llama_stack_client, monkeypatch
+        self, sample_config_file, mock_ogx_client, monkeypatch
     ):
         monkeypatch.setenv("GITHUB_TOKEN", "test-token")
 
         with patch(
-            "src.ingest.check_llama_stack_availability",
+            "src.ingest.check_ogx_availability",
             return_value={"connected": True, "error_message": ""},
         ):
             with patch(
-                "src.ingest.LlamaStackClient", return_value=mock_llama_stack_client
+                "src.ingest.OgxClient", return_value=mock_ogx_client
             ):
                 service = IngestionService(sample_config_file)
                 assert service.gh_client is not None
 
     def test_init_without_github_token(
-        self, sample_config_file, mock_llama_stack_client, monkeypatch
+        self, sample_config_file, mock_ogx_client, monkeypatch
     ):
         monkeypatch.delenv("GITHUB_TOKEN", raising=False)
 
         with patch(
-            "src.ingest.check_llama_stack_availability",
+            "src.ingest.check_ogx_availability",
             return_value={"connected": True, "error_message": ""},
         ):
             with patch(
-                "src.ingest.LlamaStackClient", return_value=mock_llama_stack_client
+                "src.ingest.OgxClient", return_value=mock_ogx_client
             ):
                 service = IngestionService(sample_config_file)
                 assert service.gh_client is not None
@@ -83,35 +91,35 @@ class TestIngestionServiceInit:
 
 class TestInitializeLlamaStackClient:
     """
-    tests for _initialize_llama_stack_client method.
+    tests for _initialize_ogx_client method.
     """
 
     def test_successful_connection_on_first_attempt(
-        self, sample_config_file, mock_llama_stack_client
+        self, sample_config_file, mock_ogx_client
     ):
         with patch(
-            "src.ingest.check_llama_stack_availability",
+            "src.ingest.check_ogx_availability",
             return_value={"connected": True, "error_message": ""},
         ):
             with patch(
-                "src.ingest.LlamaStackClient", return_value=mock_llama_stack_client
+                "src.ingest.OgxClient", return_value=mock_ogx_client
             ):
                 service = IngestionService(sample_config_file)
                 assert service.client is not None
 
     def test_successful_connection_after_retry(
-        self, sample_config_file, mock_llama_stack_client
+        self, sample_config_file, mock_ogx_client
     ):
         # First attempt fails, second succeeds
         with patch(
-            "src.ingest.check_llama_stack_availability",
+            "src.ingest.check_ogx_availability",
             side_effect=[
                 {"connected": False, "error_message": "Connection refused"},
                 {"connected": True, "error_message": ""},
             ],
         ):
             with patch(
-                "src.ingest.LlamaStackClient", return_value=mock_llama_stack_client
+                "src.ingest.OgxClient", return_value=mock_ogx_client
             ):
                 with patch("src.ingest.time.sleep"):
                     service = IngestionService(sample_config_file)
@@ -119,7 +127,7 @@ class TestInitializeLlamaStackClient:
 
     def test_connection_failure_after_all_retries(self, sample_config_file):
         with patch(
-            "src.ingest.check_llama_stack_availability",
+            "src.ingest.check_ogx_availability",
             return_value={"connected": False, "error_message": "Connection refused"},
         ):
             with patch("src.ingest.time.sleep"):
@@ -127,14 +135,14 @@ class TestInitializeLlamaStackClient:
                     IngestionService(sample_config_file)
 
     def test_connection_uses_correct_url(
-        self, sample_config_file, mock_llama_stack_client
+        self, sample_config_file, mock_ogx_client
     ):
         with patch(
-            "src.ingest.check_llama_stack_availability",
+            "src.ingest.check_ogx_availability",
             return_value={"connected": True, "error_message": ""},
         ) as mock_check:
             with patch(
-                "src.ingest.LlamaStackClient", return_value=mock_llama_stack_client
+                "src.ingest.OgxClient", return_value=mock_ogx_client
             ):
                 service = IngestionService(sample_config_file)
                 mock_check.assert_called_with("http://localhost:8321")
@@ -146,14 +154,14 @@ class TestConfigValidation:
     """
 
     def test_valid_config(
-        self, sample_config_file, mock_llama_stack_client, mock_llama_stack_availability
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability
     ):
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(sample_config_file)
             assert service is not None
 
     def test_invalid_config_missing_vector_db(
-        self, temp_dir, mock_llama_stack_client, mock_llama_stack_availability
+        self, temp_dir, mock_ogx_client, mock_ogx_availability
     ):
         invalid_config = {
             "llamastack": {"base_url": "http://localhost:8321"},
@@ -163,7 +171,7 @@ class TestConfigValidation:
         with open(config_path, "w") as f:
             yaml.dump(invalid_config, f)
 
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             with pytest.raises(SystemExit):
                 IngestionService(config_path)
 
@@ -174,9 +182,9 @@ class TestParsePipelines:
     """
 
     def test_parse_github_pipeline(
-        self, sample_config_file, mock_llama_stack_client, mock_llama_stack_availability
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability
     ):
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(sample_config_file)
 
             github_pipelines = [
@@ -187,9 +195,9 @@ class TestParsePipelines:
             assert github_pipelines[0].source_config.branch == "main"
 
     def test_parse_url_pipeline(
-        self, sample_config_file, mock_llama_stack_client, mock_llama_stack_availability
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability
     ):
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(sample_config_file)
 
             url_pipelines = [
@@ -198,7 +206,7 @@ class TestParsePipelines:
             assert len(url_pipelines) > 0
 
     def test_parse_disabled_pipeline(
-        self, temp_dir, mock_llama_stack_client, mock_llama_stack_availability
+        self, temp_dir, mock_ogx_client, mock_ogx_availability
     ):
         config = {
             "llamastack": {"base_url": "http://localhost:8321"},
@@ -218,7 +226,7 @@ class TestParsePipelines:
         with open(config_path, "w") as f:
             yaml.dump(config, f)
 
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(config_path)
             assert len(service.pipelines) > 0
             assert service.pipelines[0].enabled is False
@@ -230,7 +238,7 @@ class TestFetchFromGithub:
     """
 
     def test_fetch_from_github_with_valid_repo(
-        self, sample_config_file, mock_llama_stack_client, mock_llama_stack_availability, temp_dir, mock_github_repo
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability, temp_dir, mock_github_repo
     ):
         mock_pdf_content = Mock()
         mock_pdf_content.name = "test.pdf"
@@ -240,7 +248,7 @@ class TestFetchFromGithub:
 
         mock_github_repo.get_contents.return_value = [mock_pdf_content]
 
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(sample_config_file)
 
         with patch.object(service, "_get_github_repo", return_value=mock_github_repo):
@@ -252,9 +260,9 @@ class TestFetchFromGithub:
             assert pdf_files[0].endswith("test.pdf")
 
     def test_fetch_from_github_with_invalid_repo(
-        self, sample_config_file, mock_llama_stack_client, mock_llama_stack_availability, temp_dir
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability, temp_dir
     ):
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(sample_config_file)
 
         with patch.object(service, "_get_github_repo", return_value=None):
@@ -265,7 +273,7 @@ class TestFetchFromGithub:
             assert pdf_files == []
 
     def test_fetch_from_github_with_directory(
-        self, sample_config_file, mock_llama_stack_client, mock_llama_stack_availability, temp_dir, mock_github_repo
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability, temp_dir, mock_github_repo
     ):
         mock_dir = Mock()
         mock_dir.type = "dir"
@@ -273,7 +281,7 @@ class TestFetchFromGithub:
 
         mock_github_repo.get_contents.return_value = [mock_dir]
 
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(sample_config_file)
 
         with patch.object(service, "_get_github_repo", return_value=mock_github_repo):
@@ -294,9 +302,9 @@ class TestFetchFromUrl:
 
     @pytest.mark.anyio
     async def test_fetch_from_url_success(
-        self, sample_config_file, mock_llama_stack_client, mock_llama_stack_availability, temp_dir
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability, temp_dir
     ):
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(sample_config_file)
 
         mock_response = Mock()
@@ -312,9 +320,9 @@ class TestFetchFromUrl:
 
     @pytest.mark.anyio
     async def test_fetch_from_url_with_error(
-        self, sample_config_file, mock_llama_stack_client, mock_llama_stack_availability, temp_dir
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability, temp_dir
     ):
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(sample_config_file)
 
         with patch("src.ingest.requests.get", side_effect=Exception("Network error")):
@@ -325,9 +333,9 @@ class TestFetchFromUrl:
 
     @pytest.mark.anyio
     async def test_fetch_from_url_without_pdf_extension(
-        self, sample_config_file, mock_llama_stack_client, mock_llama_stack_availability, temp_dir
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability, temp_dir
     ):
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(sample_config_file)
 
         mock_response = Mock()
@@ -349,9 +357,9 @@ class TestProcessDocuments:
 
     @pytest.mark.anyio
     async def test_process_documents_success(
-        self, sample_config_file, mock_llama_stack_client, mock_llama_stack_availability, sample_pdf_file
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability, sample_pdf_file
     ):
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(sample_config_file)
 
         mock_file_response = Mock()
@@ -380,9 +388,9 @@ class TestProcessDocuments:
 
     @pytest.mark.anyio
     async def test_process_documents_with_error(
-        self, sample_config_file, mock_llama_stack_client, mock_llama_stack_availability, sample_pdf_file
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability, sample_pdf_file
     ):
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(sample_config_file)
 
         with patch.object(
@@ -402,9 +410,9 @@ class TestCreateVectorDb:
 
     @pytest.mark.anyio
     async def test_create_vector_db_success(
-        self, sample_config_file, mock_llama_stack_client, mock_llama_stack_availability
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability
     ):
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(sample_config_file)
 
         mock_doc = Mock()
@@ -417,9 +425,9 @@ class TestCreateVectorDb:
 
     @pytest.mark.anyio
     async def test_create_vector_db_with_no_documents(
-        self, sample_config_file, mock_llama_stack_client, mock_llama_stack_availability
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability
     ):
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(sample_config_file)
 
         result = await service.create_vector_db("test-vector-db", [])
@@ -428,9 +436,9 @@ class TestCreateVectorDb:
 
     @pytest.mark.anyio
     async def test_create_vector_db_already_exists(
-        self, sample_config_file, mock_llama_stack_client, mock_llama_stack_availability
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability
     ):
-        mock_llama_stack_client.vector_stores.create.side_effect = Exception(
+        mock_ogx_client.vector_stores.create.side_effect = Exception(
             "already exists"
         )
 
@@ -438,9 +446,11 @@ class TestCreateVectorDb:
         mock_existing_vs = Mock()
         mock_existing_vs.name = "test-vector-db"
         mock_existing_vs.id = "existing-vector-store-id"
-        mock_llama_stack_client.vector_stores.list.return_value = [mock_existing_vs]
+        mock_ogx_client.vector_stores.list.return_value = _page(
+            [mock_existing_vs]
+        )
 
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(sample_config_file)
 
         mock_doc = Mock()
@@ -450,6 +460,41 @@ class TestCreateVectorDb:
 
         assert result is True
 
+    @pytest.mark.anyio
+    async def test_create_vector_db_already_exists_beyond_first_page(
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability
+    ):
+        mock_ogx_client.vector_stores.create.side_effect = Exception(
+            "already exists"
+        )
+
+        # named store sits on the SECOND page of the list response
+        mock_other_vs = Mock()
+        mock_other_vs.name = "another-vector-db"
+        mock_other_vs.id = "other-vs-id"
+        mock_existing_vs = Mock()
+        mock_existing_vs.name = "test-vector-db"
+        mock_existing_vs.id = "existing-vector-store-id"
+        mock_ogx_client.vector_stores.list.side_effect = [
+            SimpleNamespace(
+                data=[mock_other_vs], has_more=True, last_id="other-vs-id"
+            ),
+            SimpleNamespace(
+                data=[mock_existing_vs], has_more=False, last_id="existing-vector-store-id"
+            ),
+        ]
+
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
+            service = IngestionService(sample_config_file)
+
+        mock_doc = Mock()
+        mock_doc.id = "doc-id-1"
+
+        result = await service.create_vector_db("test-vector-db", [mock_doc])
+
+        # recovery path must find the store even past the first page
+        assert result is True
+
 
 class TestSaveFileMetadata:
     """
@@ -457,9 +502,9 @@ class TestSaveFileMetadata:
     """
 
     def test_save_file_metadata_success(
-        self, sample_config_file, mock_llama_stack_client, mock_llama_stack_availability, temp_dir
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability, temp_dir
     ):
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(sample_config_file)
 
         service.file_metadata = {
@@ -478,9 +523,9 @@ class TestSaveFileMetadata:
         assert saved_metadata == service.file_metadata
 
     def test_save_file_metadata_with_empty_metadata(
-        self, sample_config_file, mock_llama_stack_client, mock_llama_stack_availability, temp_dir
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability, temp_dir
     ):
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(sample_config_file)
 
         service.file_metadata = {}
@@ -499,9 +544,9 @@ class TestProcessPipeline:
 
     @pytest.mark.anyio
     async def test_process_pipeline_disabled(
-        self, sample_config_file, mock_llama_stack_client, mock_llama_stack_availability
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability
     ):
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(sample_config_file)
 
         disabled_pipeline = Pipeline(
@@ -519,9 +564,9 @@ class TestProcessPipeline:
 
     @pytest.mark.anyio
     async def test_process_pipeline_with_github_source(
-        self, sample_config_file, mock_llama_stack_client, mock_llama_stack_availability
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability
     ):
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(sample_config_file)
 
         github_pipeline = Pipeline(
@@ -545,9 +590,9 @@ class TestProcessPipeline:
 
     @pytest.mark.anyio
     async def test_process_pipeline_with_url_source(
-        self, sample_config_file, mock_llama_stack_client, mock_llama_stack_availability
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability
     ):
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(sample_config_file)
 
         url_pipeline = Pipeline(
@@ -574,9 +619,9 @@ class TestRun:
 
     @pytest.mark.anyio
     async def test_run_with_successful_pipelines(
-        self, sample_config_file, mock_llama_stack_client, mock_llama_stack_availability
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability
     ):
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(sample_config_file)
 
         with patch.object(service, "process_pipeline", return_value=True):
@@ -585,9 +630,9 @@ class TestRun:
 
     @pytest.mark.anyio
     async def test_run_with_failed_pipelines(
-        self, sample_config_file, mock_llama_stack_client, mock_llama_stack_availability
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability
     ):
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(sample_config_file)
 
         with patch.object(service, "process_pipeline", return_value=False):
@@ -597,9 +642,9 @@ class TestRun:
 
     @pytest.mark.anyio
     async def test_run_with_mixed_results(
-        self, sample_config_file, mock_llama_stack_client, mock_llama_stack_availability
+        self, sample_config_file, mock_ogx_client, mock_ogx_availability
     ):
-        with patch("src.ingest.LlamaStackClient", return_value=mock_llama_stack_client):
+        with patch("src.ingest.OgxClient", return_value=mock_ogx_client):
             service = IngestionService(sample_config_file)
 
         with patch.object(service, "process_pipeline", side_effect=[True, False]):

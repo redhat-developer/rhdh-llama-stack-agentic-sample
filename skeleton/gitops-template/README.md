@@ -1,6 +1,6 @@
 # 📦 ${{ values.name }}-gitops
 
-> **GitOps Repository** — Kubernetes manifests and ArgoCD configuration for the Llama Stack Agentic AI Workflow
+> **GitOps Repository** — Kubernetes manifests and ArgoCD configuration for the OGX Agentic AI Workflow
 
 ---
 
@@ -25,7 +25,7 @@ This repository contains the GitOps deployment manifests for **${{ values.name }
 components/${{ values.name }}/
 ├── base/                      # Base Kubernetes manifests
 │   ├── deployment.yaml        # Streamlit UI deployment
-│   ├── deployment-llama-stack.yaml
+│   ├── deployment-ogx.yaml
 │   ├── deployment-ollama.yaml
 │   ├── deployment-mcp-server.yaml
 │   ├── service*.yaml          # Service definitions
@@ -49,7 +49,7 @@ This GitOps repository deploys the following resources:
 | Resource | Name | Description |
 |----------|------|-------------|
 | 🖥️ **Deployment** | `${{ values.name }}` | Streamlit UI application |
-| 🦙 **Deployment** | `${{ values.name }}-llama-stack` | Llama Stack inference server |
+| 🦙 **Deployment** | `${{ values.name }}-ogx` | OGX inference server |
 | 🦙 **Deployment** | `${{ values.name }}-ollama` | Ollama for safety/guardrails |
 | ☸️ **Deployment** | `${{ values.name }}-mcp-server` | Kubernetes MCP Server |
 | 🌐 **Services** | Various | Internal service networking |
@@ -87,7 +87,7 @@ This GitOps repository deploys the following resources:
 
 ## 🤝 Contribute to the Template
 
-This GitOps repository was generated from the **Llama Stack Agentic AI Workflow** Software Template.
+This GitOps repository was generated from the **OGX Agentic AI Workflow** Software Template.
 
 Want to improve the template, report issues, or contribute new features? Visit the upstream repository:
 

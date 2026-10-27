@@ -1,4 +1,4 @@
-# Llama Stack Server Deployment
+# OGX Server Deployment
 # run.yaml is baked into the image - env vars override config at runtime
 apiVersion: apps/v1
 kind: Deployment
@@ -6,35 +6,40 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
   labels:
-    app.kubernetes.io/instance: ${{ values.name }}-llama-stack
+    app.kubernetes.io/instance: ${{ values.name }}-ogx
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: ${{ values.name }}-llama-stack
+    app.kubernetes.io/name: ${{ values.name }}-ogx
     app.kubernetes.io/part-of: ${{ values.name }}
-    app.kubernetes.io/component: llama-stack
-  name: ${{ values.name }}-llama-stack
+    app.kubernetes.io/component: ogx
+  name: ${{ values.name }}-ogx
 spec:
   replicas: 1
+  # Recreate (not the default RollingUpdate) because the demo cluster is small
+  # and near capacity: a rolling update's surge pod cannot be scheduled and the
+  # rollout deadlocks. Recreate terminates the old pod before starting the new.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
-      app.kubernetes.io/instance: ${{ values.name }}-llama-stack
+      app.kubernetes.io/instance: ${{ values.name }}-ogx
   template:
     metadata:
       labels:
-        app.kubernetes.io/instance: ${{ values.name }}-llama-stack
-        app.kubernetes.io/component: llama-stack
+        app.kubernetes.io/instance: ${{ values.name }}-ogx
+        app.kubernetes.io/component: ogx
     spec:
       containers:
-        - name: llama-stack
+        - name: ogx
           # Image with run.yaml baked in
-          image: ${{ values.llamaStackContainer }}
+          image: ${{ values.ogxContainer }}
           imagePullPolicy: Always
           envFrom:
             # Non-sensitive config from template (URLs, model names)
             - configMapRef:
-                name: ${{ values.name }}-llama-stack-env
+                name: ${{ values.name }}-ogx-env
             # Sensitive config from user-created secret (API keys)
             - secretRef:
-                name: ${{ values.llamaStackSecretName }}
+                name: ${{ values.ogxSecretName }}
                 optional: false
           env:
             # Explicitly set provider URLs and keys (also in ConfigMap/Secret via envFrom,
@@ -42,17 +47,17 @@ spec:
             - name: VLLM_URL
               valueFrom:
                 configMapKeyRef:
-                  name: ${{ values.name }}-llama-stack-env
+                  name: ${{ values.name }}-ogx-env
                   key: VLLM_URL
             - name: VLLM_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: ${{ values.llamaStackSecretName }}
+                  name: ${{ values.ogxSecretName }}
                   key: VLLM_API_KEY
             - name: OLLAMA_URL
               valueFrom:
                 configMapKeyRef:
-                  name: ${{ values.name }}-llama-stack-env
+                  name: ${{ values.name }}-ogx-env
                   key: OLLAMA_URL
             # Override paths for container environment
             - name: KV_SQL_STORE_DIR

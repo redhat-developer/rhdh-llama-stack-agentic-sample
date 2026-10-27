@@ -4,8 +4,8 @@ import os
 import threading
 from typing import Any
 
-from llama_stack_client import LlamaStackClient
-from llama_stack_client.types import ResponseObject
+from ogx_client import OgxClient
+from ogx_client import OpenAIResponseObject as ResponseObject
 from typing_extensions import Literal
 
 from src.types import WorkflowState
@@ -191,12 +191,12 @@ def extract_mcp_output(
     return mcp_output
 
 
-def check_llama_stack_availability(
+def check_ogx_availability(
     base_url: "str",
     required_models: "list[str] | None" = None,
 ) -> "dict[str, Any]":
     """
-    checks llama-stack server connectivity and model availability.
+    checks OGX server connectivity and model availability.
     Makes sure that all required models are present on the server.
     """
     result: "dict[str, Any]" = {
@@ -207,7 +207,7 @@ def check_llama_stack_availability(
     }
 
     try:
-        client = LlamaStackClient(base_url=base_url)
+        client = OgxClient(base_url=base_url)
         models_response = client.models.list()
         result["connected"] = True
 
@@ -216,7 +216,7 @@ def check_llama_stack_availability(
 
         available_model_ids = set()
         if models_response:
-            for model in models_response:
+            for model in models_response.data:
                 model_id = getattr(model, "identifier", None) or getattr(
                     model, "id", None
                 )
@@ -234,16 +234,71 @@ def check_llama_stack_availability(
         error_str = str(e)
         if "Connection refused" in error_str or "ConnectError" in error_str:
             result["error_message"] = (
-                f"Cannot connect to Llama Stack server at {base_url}. "
+                f"Cannot connect to OGX server at {base_url}. "
                 "Please ensure the server is running."
             )
         elif "timeout" in error_str.lower():
             result["error_message"] = (
-                f"Connection to Llama Stack at {base_url} timed out."
+                f"Connection to OGX at {base_url} timed out."
             )
         else:
-            result["error_message"] = f"Llama Stack connection failed: {error_str}"
+            result["error_message"] = f"OGX connection failed: {error_str}"
 
-        logger.error(f"Llama Stack health check failed: {result['error_message']}")
+        logger.error(f"OGX health check failed: {result['error_message']}")
 
     return result
+
+
+def list_all_vector_stores(
+    client: OgxClient, page_size: int = 100, max_pages: int = 50
+) -> "list[Any]":
+    """List all vector stores, following the OGX pagination cursor.
+
+    The OGX OpenAI-compatible list endpoints return one page at a time
+    (``.data``, ``.has_more``, ``.last_id``); this helper pages through
+    with ``limit=page_size`` and ``after=last_id`` until ``has_more`` is
+    false, the page cap is hit, or the cursor is missing.
+    """
+    results: "list[Any]" = []
+    after: "str | None" = None
+    for _ in range(max_pages):
+        resp = client.vector_stores.list(limit=page_size, after=after)
+        data = resp.data if resp else []
+        results.extend(data or [])
+        if resp is None or not getattr(resp, "has_more", False):
+            return results
+        after = getattr(resp, "last_id", None)
+        if after is None:  # malformed page: cursor missing, stop rather than loop
+            logger.warning("Pagination: has_more with no last_id, stopping")
+            return results
+    logger.warning(
+        f"Pagination: hit max_pages={max_pages} cap, results may be truncated"
+    )
+    return results
+
+
+def list_all_vector_store_files(
+    client: OgxClient,
+    vector_store_id: str,
+    page_size: int = 100,
+    max_pages: int = 50,
+) -> "list[Any]":
+    """List all files in a vector store, following the pagination cursor."""
+    results: "list[Any]" = []
+    after: "str | None" = None
+    for _ in range(max_pages):
+        resp = client.vector_stores_files.list(
+            vector_store_id=vector_store_id, limit=page_size, after=after
+        )
+        data = resp.data if resp else []
+        results.extend(data or [])
+        if resp is None or not getattr(resp, "has_more", False):
+            return results
+        after = getattr(resp, "last_id", None)
+        if after is None:
+            logger.warning("Pagination: has_more with no last_id, stopping")
+            return results
+    logger.warning(
+        f"Pagination: hit max_pages={max_pages} cap, results may be truncated"
+    )
+    return results

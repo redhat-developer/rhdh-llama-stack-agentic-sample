@@ -168,6 +168,24 @@ class TestMakeWorkflow:
 
         assert compiled_workflow is not None
 
+    def test_make_workflow_accepts_mcp_tool_model(self):
+        """make_workflow must accept mcp_tool_model (streamlit_app passes it)."""
+        mock_rag_service = Mock()
+        mock_openai_client = Mock()
+        mock_rag_service.openai_client = mock_openai_client
+
+        workflow = Workflow(rag_service=mock_rag_service)
+
+        compiled_workflow = workflow.make_workflow(
+            tools_llm="test-model",
+            mcp_tool_model="mcp-model",
+            git_token="test-token",
+            github_url="https://github.com/test/repo",
+            guardrail_model="guardrail-model",
+        )
+
+        assert compiled_workflow is not None
+
     def test_make_workflow_with_rag_service(self):
         mock_rag_service = Mock()
         mock_openai_client = Mock()
@@ -442,12 +460,9 @@ class TestWorkflowIntegration:
             mock_parsed_completion
         )
 
-        moderation_result = Mock()
-        moderation_result.flagged = False
-        moderation_result.categories = Mock(model_extra={})
-        mock_moderation_response = Mock()
-        mock_moderation_response.results = [moderation_result]
-        mock_openai_client.moderations.create.return_value = mock_moderation_response
+        # Guardrail now runs the guard model via chat completions (OGX 1.2.5
+        # dropped /v1/moderations). The mock_completion above returns a non-unsafe
+        # string, so the guardrail treats the input as safe.
 
         mock_rag_service.openai_client = mock_openai_client
         mock_rag_service.openai_client = mock_openai_client

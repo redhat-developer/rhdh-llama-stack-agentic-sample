@@ -3,7 +3,7 @@ import time
 from typing import Any, cast
 
 from langgraph.graph import START, StateGraph
-from llama_stack_client.types import ResponseObject
+from ogx_client import OpenAIResponseObject as ResponseObject
 
 from src.constants import (
     DEFAULT_INFERENCE_MODEL,
@@ -211,10 +211,10 @@ class Workflow:
                     rag_end_time = time.time()
                     state["rag_query_time"] = rag_end_time - rag_start_time
 
-                    response_text = extract_rag_response_text(rag_response)
                     rag_response_obj: "ResponseObject" = cast(
                         ResponseObject, rag_response
                     )
+                    response_text = extract_rag_response_text(rag_response_obj)
 
                     if rag_category:
                         sources = self.rag_service.extract_sources_from_response(
@@ -302,6 +302,7 @@ class Workflow:
     def make_workflow(
         self,
         tools_llm: "str",
+        mcp_tool_model: "str | None" = None,
         git_token: "str | None" = None,
         guardrail_model: "str | None" = None,
         github_url: "str | None" = None,
@@ -309,12 +310,20 @@ class Workflow:
         """Create and configure the overall workflow with all agents and routing.
 
         Args:
-            tools_llm: LLM model name for classification, inference, and tool usage
-            (e.g., 'ollama/llama3.2:3b')
+            tools_llm: LLM model name for classification, inference, and RAG
+            (e.g., 'openai/gemini-3.1-pro-preview')
+            mcp_tool_model: LLM model name used by the agents that make MCP tool
+            calls (git, pod, perf). Falls back to tools_llm when not provided.
+            Some models (e.g. Gemini 3) cannot complete MCP tool loops, so this
+            is kept separate from tools_llm (e.g. 'ollama/llama3.1:latest').
             git_token: GitHub personal access token for git agent MCP calls (optional)
             guardrail_model: Model name for content moderation/safety checks (optional)
             github_url: GitHub repository URL for creating issues (optional)
         """
+        # agents that make MCP tool calls need a model capable of tool loops;
+        # fall back to tools_llm for backward compatibility
+        if mcp_tool_model is None:
+            mcp_tool_model = tools_llm
         # Create all department agents using the factory function
         # RAG is enabled for legal and support agents using their
         # respective vector stores
@@ -427,7 +436,7 @@ class Workflow:
                 openai_client=(
                     self.rag_service.openai_client if self.rag_service else None
                 ),
-                tools_llm=tools_llm,
+                tools_llm=mcp_tool_model,
                 git_token=git_token,
                 github_url=github_url,
             )
@@ -438,7 +447,7 @@ class Workflow:
                 openai_client=(
                     self.rag_service.openai_client if self.rag_service else None
                 ),
-                tools_llm=tools_llm,
+                tools_llm=mcp_tool_model,
             )
 
         def perf_agent_node(state: "WorkflowState") -> "WorkflowState":
@@ -447,7 +456,7 @@ class Workflow:
                 openai_client=(
                     self.rag_service.openai_client if self.rag_service else None
                 ),
-                tools_llm=tools_llm,
+                tools_llm=mcp_tool_model,
             )
 
         overall_workflow = StateGraph(cast("Any", WorkflowState))

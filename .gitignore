@@ -31,8 +31,10 @@ ENV/
 .env
 .env.local
 
-# Llama Stack local data
+# OGX local data
 .llama/
+.data/
+start-local-ogx/data/
 
 # Temporary files
 *.tmp

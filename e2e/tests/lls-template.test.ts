@@ -4,13 +4,13 @@ import { KubeClient } from '../API/k8s-client';
 import { LlsTemplateValues } from '../API/types';
 import { GitHubClient } from '../API/git-client';
 
-describe('Llama stack agentic sample template', () => {
+describe('OGX agentic sample template', () => {
   const templateUrl = 'https://github.com/redhat-developer/rhdh-llama-stack-agentic-sample/blob/main/template/template.yaml';
   const namespace = process.env.APP_NAMESPACE || 'rhdh-app';
-  const templateName = 'llama-stack-agentic';
+  const templateName = 'ogx-agentic';
 
   const appName = `lls-test-${Date.now()}`;
-  const llsSecret = 'llama-stack-secrets';
+  const llsSecret = 'ogx-secrets';
   const platformSecret = 'platform-credentials';
 
   const defaultRepo = `https://github.com/${process.env.GITOPS_GIT_ORG}/${appName}`;
@@ -27,7 +27,7 @@ describe('Llama stack agentic sample template', () => {
     imageOrg: process.env.IMAGE_ORG || 'rhdh-pai-qe',
     imageRegistry: 'quay.io',
     inferenceModel: process.env.INFERENCE_MODEL || 'vllm/redhataiqwen3-8b-fp8-dynamic',
-    llamaStackSecretName: llsSecret,
+    ogxSecretName: llsSecret,
     mcpToolModel: process.env.MCP_MODEL || 'vllm/redhataiqwen3-8b-fp8-dynamic',
     name: appName,
     namespace: namespace,
@@ -112,7 +112,7 @@ describe('Llama stack agentic sample template', () => {
     const names = deployments.flatMap((deployment) => deployment.metadata?.name);
 
     expect(names).toContain(templateValues.name);
-    expect(names).toContain(`${templateValues.name}-llama-stack`);
+    expect(names).toContain(`${templateValues.name}-ogx`);
     expect(names).toContain(`${templateValues.name}-mcp-server`);
     expect(names).toContain(`${templateValues.name}-ollama`);
   });

@@ -1,6 +1,6 @@
-# **Llama Stack Agentic AI Workflow - Deployable Application**
+# **OGX Agentic AI Workflow - Deployable Application**
 
-This AI Software Template creates a comprehensive agentic workflow system that uses multiple AI agents to intelligently route and respond to user queries. The application leverages Llama Stack for AI model interactions and LangGraph for workflow orchestration.
+This AI Software Template creates a comprehensive agentic workflow system that uses multiple AI agents to intelligently route and respond to user queries. The application leverages OGX for AI model interactions and LangGraph for workflow orchestration.
 
 ## **Application Overview**
 
@@ -17,9 +17,9 @@ The main user interface provides:
 - **Performance Metrics** - Processing time breakdown by agent
 - **Model Configuration Display** - View which models are configured for inference, guardrails, and MCP tools
 
-### **2. Llama Stack Server**
+### **2. OGX Server**
 
-The Llama Stack server provides:
+The OGX server provides:
 
 - **Unified AI API** - OpenAI-compatible endpoints for inference
 - **Vector Store Management** - FAISS-based vector databases for RAG

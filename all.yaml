@@ -1,8 +1,8 @@
 apiVersion: backstage.io/v1alpha1
 kind: Location
 metadata:
-  name: llama-stack-agentic-all 
-  description: Llama Stack Agentic Sample
+  name: ogx-agentic-all 
+  description: OGX Agentic Sample
 spec:
   targets:
     - ./template/template.yaml

@@ -3,19 +3,19 @@
 ![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)
 ![Tests](https://img.shields.io/badge/tests-passing-success.svg)
 
-This AI Agentic application provides a prototype "developer portal" chat interface which employs dynamic, stateful, workflow orchestration via both LangGraph and Llama Stack which takes customer questions and dynamically routes to different AI Agents, and call different agentic tools, based on the user's prompt and how it is classified.
+This AI Agentic application provides a prototype "developer portal" chat interface which employs dynamic, stateful, workflow orchestration via both LangGraph and OGX which takes customer questions and dynamically routes to different AI Agents, and call different agentic tools, based on the user's prompt and how it is classified.
 
-When progressing through the orchestration, rather than making any AI Related REST invocations directly against running AI Models, the model interactions all flow back and forth through a locally running Llama Stack instance and its Responses API compatibility layer.
+When progressing through the orchestration, rather than making any AI Related REST invocations directly against running AI Models, the model interactions all flow back and forth through a locally running OGX instance and its Responses API compatibility layer.
 
 The sections below provide a guide
 
-- for Llama Stack setup and running of the application
+- for OGX setup and running of the application
 - with details on how elements of the application are implemented
 
 A hint on what you will find
 
 - Use of LangGraph's [Graph API](https://docs.langchain.com/oss/python/langgraph/graph-api)
-- Use of [OpenAI Moderations](https://platform.openai.com/docs/guides/moderation) provided by Llama Stack's [OpenAI-compatible API endpoint](https://llamastack.github.io/docs/providers/openai)
+- Use of [Llama Guard 3](https://llama.meta.com/docs/model-cards-and-prompt-formats/llama-guard-3) for content safety, run as a chat completion against the guardrail model via OGX's [OpenAI-compatible API endpoint](https://ogx.github.io/docs/providers/openai)
 - Use of Red Hat's [Kubernetes MCP Server](https://developers.redhat.com/articles/2025/09/25/kubernetes-mcp-server-ai-powered-cluster-management)
 - Use of GitHub's [Remote GitHub MCP Server](https://github.com/mcp/github/github-mcp-server)
 
@@ -30,17 +30,27 @@ For example
 
 ```bash
 # only required if you do not override the GUARDRAIL_MODEL environment variable
-ollama pull llama-guard3:1b
+ollama pull llama-guard3:8b
+# embedding model required by the vector store / RAG file search; the server
+# refuses to start without it
+ollama pull all-minilm:l6-v2
 ollama serve
 ```
 
 proved sufficient for providing a model to pass the moderation / guardrail checks.
 
-You can also employ `ollama run llama-guard3:1b --keepalive 60m` for each of those models if ollama is already running. When their
+The OGX server validates its configured embedding model (`all-minilm:l6-v2`) at
+startup, so pulling it is mandatory for a local run even if you are not using RAG
+file search.
+
+You can also employ `ollama run llama-guard3:8b --keepalive 60m` for each of those models if ollama is already running. When their
 startup completes, type `/bye` and the provided prompt to return to your terminal.
 
-We also recommend you find a model that grades well for tool calling, register it with Llama Stack, and set the
-`MCP_TOOL_MODEL` environment variable to the model's ID as seen when running `llama_stack_client models list`.
+We also recommend you find a model that grades well for tool calling, register it with OGX, and set the
+`MCP_TOOL_MODEL` environment variable to the model's ID as seen when running (server must be running on :8321):
+```
+uv run python -c "from ogx_client import OgxClient; [print(getattr(m,'identifier',None) or m.id) for m in OgxClient(base_url='http://localhost:8321').models.list().data]"
+```
 
 For maximum flexibility, the application breaks down the use of AI models along these lines:
 
@@ -49,13 +59,14 @@ For maximum flexibility, the application breaks down the use of AI models along 
 
 In our testing, the following models achieved tolerable performance for both `INFERENCE_MODEL` AND `MCP_TOOL_MODEL`:
 
-- `qwen3-8b-fp8` deployed using OpenShift AI in our local environment, where we leverage the Llama Stack vllm provider
-- `gemini-2.5-pro` via the Google public offering, where we leverage the LlamaStack gemini provider.
-- `gpt-4o` and `gpt-4o-mini` via the OpenAI public offering, where we leverage the LlamaStack openai provider
+- `ollama/llama3.1:8b` via local Ollama run.
+- `qwen3-8b-fp8` deployed using OpenShift AI in our local environment, where we leverage the OGX vllm provider
+- `gemini-2.5-pro` via the Google public offering, where we leverage the Ogx gemini provider.
+- `gpt-4o` and `gpt-4o-mini` via the OpenAI public offering, where we leverage the Ogx openai provider
 
-Visit the [run.yaml file](./run.yaml) for the environment variables leveraged with starting up those Llama Stack providers.
+Visit the [run.yaml file](./run.yaml) for the environment variables leveraged with starting up those OGX providers.
 
-### Update your Llama Stack config to access your existing models
+### Update your OGX config to access your existing models
 
 ### Setup your Virtual Environment
 
@@ -66,16 +77,19 @@ uv sync
 source .venv/bin/activate
 ```
 
-### Run Llama Stack
+### Run OGX
 
-We have provided a custom run.yaml file to specify the required providers. Use the following command to run the Llama Stack with the custom configuration file.
+We have provided a custom run.yaml file to specify the required providers. Use the following command to run the OGX with the custom configuration file.
 The snippet below assumes you are in the top directory of your clone of this repository.
 
 ```
-cd start-local-llamastack
+cd start-local-ogx
 uv sync
 source .venv/bin/activate
-uv run llama stack run run.yaml
+# The Ollama provider only registers when OLLAMA_URL is set; export it before
+# starting so the embedding/inference models are available.
+export OLLAMA_URL=http://localhost:11434/v1
+uv run ogx run run.yaml --insecure
 ```
 
 ### Launch Kubernetes MCP Server
@@ -109,13 +123,13 @@ Lastly, provide your GitHub ID via the `GITHUB_ID` environment variable.
 
 The sample will create issues against the repository indicated by `GITHUB_URL` and assign the issue to the ID indicated by `GITHUB_ID`.
 
-### Validate Llama Stack Setup
+### Validate OGX Setup
 
-Open a new terminal and navigate to the project root directory. Activate your existing virtual environment and use the CLI tool to test your setup.
+Open a new terminal and navigate to the project root directory. Activate your existing virtual environment and verify the server responds. The `ogx-client` package does not ship a CLI, so the check is a one-liner instead:
 
 ```bash
 source .venv/bin/activate
-uv run llama-stack-client configure --endpoint http://localhost:8321 --api-key none
+uv run python -c "from ogx_client import OgxClient; print(OgxClient(base_url='http://localhost:8321').models.list())"
 ```
 
 ## Run the application Code
@@ -174,7 +188,7 @@ Three LangGraph `StateGraphs` encompass the orchestration workflow:
 LangGraph provides various API for printing all the nodes and edges of the `StateGraph` you create. The sample leverages
 one of those API to print all three `StateGraphs` on startup.
 
-The sample interacts with AI models through Llama Stack's Response API, which provides OpenAI-compatible endpoints for model inference and structured output generation.
+The sample interacts with AI models through OGX's Response API, which provides OpenAI-compatible endpoints for model inference and structured output generation.
 
 The sample then leverages dictionary based schema and prompting via the `with_structured_output` function call to derive:
 
@@ -188,10 +202,10 @@ Certain nodes throughout the multilayered orchestration will call either:
 
 ## MCP Tool calling
 
-The sample uses Llama Stack's OpenAI-compatible API endpoint, specifically the Responses API, to prompt the LLM so that a
+The sample uses OGX's OpenAI-compatible API endpoint, specifically the Responses API, to prompt the LLM so that a
 call to the desired MCP tool is made.
 
-Direct MCP tool calling through Llama Stack's OpenAI Responses API has been successfully implemented in this sample.
+Direct MCP tool calling through OGX's OpenAI Responses API has been successfully implemented in this sample.
 
 ### Qwen3-8b-fp8
 
@@ -203,7 +217,7 @@ Specifically:
 'error': 'Expecting value: line 1 column 1 (char 0)', 'type': 'invalid_tool_call'
 ```
 
-- with the OpenAI Chat Completion API enabled, the 'invoke' or 'ainvoke' call completes without error, but the MCP server is not called, and the Llama Stack server has logs like:
+- with the OpenAI Chat Completion API enabled, the 'invoke' or 'ainvoke' call completes without error, but the MCP server is not called, and the OGX server has logs like:
 
 ```
 INFO     2025-10-19 12:09:39,133 console_span_processor:48 telemetry:
@@ -234,9 +248,9 @@ call of the MCP server do appear to occur.
 content=[{'arguments': '{}', 'call_id': 'call_rpuxUFZg81ON7AdMZS8SUNig', 'name': 'namespaces_list', 'type': 'function_call', 'id': 'fc_7510dc25-e069-4990-b1c0-4c5891af8f98', 'status': 'completed'}] additional_kwargs={} response_metadata={'id': 'resp-25a423e0-b893-4662-a1ae-08570175afae', 'created_at': 1761497399.0, 'model': 'openai/gpt-4o', 'object': 'response', 'status': 'completed', 'model_provider': 'openai', 'model_name': 'openai/gpt-4o'} id='resp-25a423e0-b893-4662-a1ae-08570175afae' tool_calls=[{'name': 'namespaces_list', 'args': {}, 'id': 'call_rpuxUFZg81ON7AdMZS8SUNig', 'type': 'tool_call'}]
 ```
 
-In addition to running through Llama Stack, an attempt was also made to run against [https://api.openai.com/v1/responses](https://api.openai.com/v1/responses) directly,
+In addition to running through OGX, an attempt was also made to run against [https://api.openai.com/v1/responses](https://api.openai.com/v1/responses) directly,
 but again without success.
 
 ## Safety / Guardrails
 
-This sample uses Llama Stack's OpenAI Moderations API for content safety and guardrails. The moderations API provides built-in checks that work with models like `ollama/llama-guard3:8b` to flag inappropriate content and ensure safe interactions.
+This sample uses Llama Guard 3 for content safety and guardrails. OGX 1.2.5 no longer serves an OpenAI-compatible moderations endpoint, so the guardrail sends the text to the configured guard model (e.g. `ollama/llama-guard3:8b`) as a chat completion; Llama Guard replies with `safe` or `unsafe` followed by the violated hazard categories, which the application maps to human-readable names.

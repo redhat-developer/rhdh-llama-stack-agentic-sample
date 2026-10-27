@@ -12,11 +12,11 @@ resources:
   - rbac-mcp-server.yaml
   # ConfigMaps (run.yaml and ingestion-config.yaml are baked into images)
   - configmap-app.yaml
-  - configmap-llama-stack-env.yaml
+  - configmap-ogx-env.yaml
   # NOTE: Secrets are user-managed - see TechDocs for example
-  # Llama Stack Server
-  - deployment-llama-stack.yaml
-  - service-llama-stack.yaml
+  # OGX Server
+  - deployment-ogx.yaml
+  - service-ogx.yaml
   # Kubernetes MCP Server
   - deployment-mcp-server.yaml
   - service-mcp-server.yaml

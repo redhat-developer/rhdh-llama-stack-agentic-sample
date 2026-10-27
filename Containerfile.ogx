@@ -1,6 +1,6 @@
-# Llama Stack Server Container
+# OGX Server Container
 # Multi-stage build for smaller, more secure image
-# Configuration uses ${env.VAR} syntax - resolved at runtime by Llama Stack
+# Configuration uses ${env.VAR} syntax - resolved at runtime by OGX
 
 # =============================================================================
 # BUILDER STAGE
@@ -19,11 +19,12 @@ RUN dnf install -y gcc python3-devel make && \
     dnf clean all && \
     pip3.12 install uv
 
-# Copy Llama Stack specific dependency specification
-COPY ./pyproject.llama-stack.toml ./pyproject.toml
+# Copy OGX specific dependency specification
+COPY ./start-local-ogx/pyproject.toml ./pyproject.toml
+COPY ./start-local-ogx/uv.lock ./uv.lock
 
-# Install Python dependencies
-RUN uv sync --no-dev
+# Install Python dependencies (deps only; the ogx-server project has no package to build)
+RUN uv sync --no-dev --no-install-project
 
 # =============================================================================
 # RUNTIME STAGE
@@ -44,9 +45,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Copy virtual environment from builder
 COPY --from=builder --chown=1001:1001 /app-root/.venv ./.venv
 
-# Copy Llama Stack configuration
+# Copy OGX configuration
 # Uses ${env.VAR} syntax - resolved at runtime
-COPY --chown=1001:1001 ./run.yaml ./
+COPY --chown=1001:1001 ./start-local-ogx/run.yaml ./
 
 # Create data directories for runtime
 USER root
@@ -58,19 +59,22 @@ RUN mkdir -p /data /data/files && \
 RUN mkdir -p /licenses
 COPY LICENSE /licenses/
 
-# Expose Llama Stack server port
+# Expose OGX server port
 EXPOSE 8321
 
 USER 1001
 
 # Default command - run.yaml is in /app-root
-CMD ["llama", "stack", "run", "/app-root/run.yaml"]
+# --insecure: serve plain HTTP. The OGX server is reached only in-cluster
+# (app pod -> ogx sidecar on port 8321); no external route is exposed to it.
+# OGX 1.2.5+ requires TLS certs otherwise and exits on startup.
+CMD ["ogx", "stack", "run", "/app-root/run.yaml", "--insecure"]
 
 # Labels
-LABEL com.redhat.component=llama-stack-agentic \
-      description="Llama Stack Agentic AI Server" \
-      io.k8s.description="Llama Stack Agentic AI Server" \
-      io.k8s.display-name="Llama Stack Agentic" \
-      io.openshift.tags="ai,llama-stack,inference,agents" \
-      name=llama-stack-agentic \
-      summary="Llama Stack server for agentic AI workflows"
+LABEL com.redhat.component=ogx-agentic \
+      description="OGX Agentic AI Server" \
+      io.k8s.description="OGX Agentic AI Server" \
+      io.k8s.display-name="OGX Agentic" \
+      io.openshift.tags="ai,ogx,inference,agents" \
+      name=ogx-agentic \
+      summary="OGX server for agentic AI workflows"

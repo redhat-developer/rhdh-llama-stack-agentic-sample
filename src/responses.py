@@ -2,10 +2,10 @@ import json
 import os
 from typing import Any
 
-from llama_stack_client import LlamaStackClient
-from llama_stack_client.types import ResponseObject
-from llama_stack_client.types.response_list_response import (
-    OutputOpenAIResponseOutputMessageFileSearchToolCallResult as FileSearchToolCallResult,  # noqa
+from ogx_client import OgxClient
+from ogx_client import OpenAIResponseObject as ResponseObject
+from ogx_client import (
+    OpenAIResponseOutputMessageFileSearchToolCallResults as FileSearchToolCallResult,  # noqa
 )
 from openai import OpenAI
 
@@ -17,7 +17,7 @@ from src.constants import (
 )
 from src.exceptions import NoVectorStoresFoundError
 from src.types import Pipeline, SourceTypes
-from src.utils import logger
+from src.utils import list_all_vector_store_files, list_all_vector_stores, logger
 
 
 class RAGService:
@@ -33,7 +33,7 @@ class RAGService:
         file_metadata_path: "str | None" = None,
     ) -> "None":
         self.llama_stack_url = llama_stack_url
-        self.client: "LlamaStackClient | None" = None
+        self.client: "OgxClient | None" = None
         self.openai_client: "OpenAI | None" = None
         self.vector_store_map: "dict[str, list[str]]" = {}
         self.all_vector_store_ids: "list[str]" = []
@@ -89,7 +89,7 @@ class RAGService:
         If there's a mismatch (stale metadata), regenerates metadata from vector stores.
         This handles the case where:
         - Pod restarts with existing vector stores but stale/missing metadata
-        - Container has metadata from a different Llama Stack instance
+        - Container has metadata from a different OGX instance
         """
         if not self.client:
             logger.warning(
@@ -104,7 +104,7 @@ class RAGService:
         for category, vs_ids in self.vector_store_map.items():
             for vs_id in vs_ids:
                 try:
-                    files = self.client.vector_stores.files.list(vector_store_id=vs_id)
+                    files = list_all_vector_store_files(self.client, vs_id)
                     if not files:
                         continue
                     for file_info in files:
@@ -145,12 +145,12 @@ class RAGService:
         self, file_id_to_category: "dict[str, str]"
     ) -> "None":
         """
-        Regenerates file metadata by querying file details from Llama Stack.
+        Regenerates file metadata by querying file details from OGX.
         Uses category information to construct GitHub URLs.
 
         This handles pod restarts where the local metadata file is lost but
-        vector stores still exist in Llama Stack. The original filename is
-        preserved in Llama Stack's file storage (since we upload with the
+        vector stores still exist in OGX. The original filename is
+        preserved in OGX's file storage (since we upload with the
         original filename, just with .txt extension instead of .pdf).
         """
         if not self.client:
@@ -160,7 +160,7 @@ class RAGService:
 
         for file_id, category in file_id_to_category.items():
             try:
-                # Try to get file details from Llama Stack
+                # Try to get file details from OGX
                 file_info = self.client.files.retrieve(file_id)
 
                 # Extract filename - try multiple attributes
@@ -282,12 +282,12 @@ class RAGService:
 
     def initialize(self) -> "bool":
         """
-        initializes the Llama Stack client and load vector stores.
+        initializes the OGX client and load vector stores.
         """
         try:
-            self.client = LlamaStackClient(base_url=self.llama_stack_url)
+            self.client = OgxClient(base_url=self.llama_stack_url)
             self.client.models.list()
-            logger.info("RAG Service: Llama Stack client initialized successfully")
+            logger.info("RAG Service: OGX client initialized successfully")
 
             # Initialize OpenAI client for structured output
             # (points to LlamaStack's OpenAI-compatible endpoint)
@@ -334,7 +334,7 @@ class RAGService:
             logger.warning("RAG Service: No enabled pipelines found")
             return False
 
-        vector_stores = self.client.vector_stores.list() or []
+        vector_stores = list_all_vector_stores(self.client)
         existing_stores = set()
         for vs in vector_stores:
             vs_name = vs.name.lower() if vs.name else vs.id.lower()
@@ -353,7 +353,7 @@ class RAGService:
 
     def load_vector_stores(self) -> "bool":
         """
-        loads vector stores from Llama Stack and map them by category.
+        loads vector stores from OGX and map them by category.
 
         raises:: NoVectorStoresFoundError if no vector stores are found.
         """
@@ -361,10 +361,9 @@ class RAGService:
             logger.error("RAG Service: Client not initialized")
             return False
 
-        vector_stores = self.client.vector_stores.list() or []
-        vector_store_list = list(vector_stores)
+        vector_stores = list_all_vector_stores(self.client)
 
-        if not vector_stores or len(vector_store_list) == 0:
+        if not vector_stores:
             err = "RAG Service: No vector stores found"
             logger.warning(err)
             raise NoVectorStoresFoundError(err)
@@ -404,7 +403,7 @@ class RAGService:
     ) -> "dict[str, Any] | None":
         """
         gets file_search tool configuration for OpenAI responses API.
-        This tool format works with both OpenAI SDK and Llama Stack's
+        This tool format works with both OpenAI SDK and OGX's
         OpenAI-compatible endpoint.
         """
         vector_store_ids = self.get_vector_store_ids(category)
@@ -531,7 +530,7 @@ class RAGService:
 
         for vs_id in vector_store_ids:
             try:
-                files = self.client.vector_stores.files.list(vector_store_id=vs_id)
+                files = list_all_vector_store_files(self.client, vs_id)
             except Exception as e:
                 logger.debug(f"Could not list files for vector store {vs_id}: {e}")
                 continue
