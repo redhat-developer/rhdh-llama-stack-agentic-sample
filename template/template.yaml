@@ -333,7 +333,7 @@ spec:
           namespace: ${{ parameters.namespace }}
           repoURL: https://${{ parameters.githubServer if parameters.hostType === 'GitHub' else parameters.gitlabServer }}/${{ parameters.repoOwner }}/${{ parameters.repoName }}-gitops
           srcRepoURL: https://${{ parameters.githubServer if parameters.hostType === 'GitHub' else parameters.gitlabServer }}/${{ parameters.repoOwner }}/${{ parameters.repoName }}
-          appContainer: quay.io/redhat-ai-dev/agentic-sample:latest
+          appContainer: quay.io/redhat-ai-dev/agentic-sample:rolling-demo-2.1
           appPort: 8501
           inferenceModel: ${{ parameters.inferenceModel }}
           guardrailModel: ${{ parameters.guardrailModel }}
@@ -425,8 +425,8 @@ spec:
           webhookSecretKey: webhook.secret
           defaultBranch: main
           # Application container image
-          appContainer: quay.io/redhat-ai-dev/agentic-sample:latest
-          ogxContainer: quay.io/redhat-ai-dev/agentic-ogx:latest
+          appContainer: quay.io/redhat-ai-dev/agentic-sample:rolling-demo-2.1
+          ogxContainer: quay.io/redhat-ai-dev/agentic-ogx:rolling-demo-2.1
           appPort: 8501
           # OGX configuration
           vllmUrl: ${{ parameters.vllmUrl }}
